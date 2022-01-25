@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const program = require('commander')
-const {version, name, description} = require('../package.json')
+const {version, name, description} = require('../package2.json')
 const Portal = require('./devportal/portal')
 const Marketplace = require('./devportal/module/marketplace')
 const archiver = require('archiver')
