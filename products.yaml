@@ -8,4 +8,13 @@ products:
     timeunit: minute
     proxies:
       - echoheaders
-    openapi: spec.yml
+    openapi: swagger.json
+categories:
+  - name: category1
+    openapi: swagger.json
+    products:
+      - id: 1234
+        inheritSpec: true
+      - id: 4321
+        inheritSpec: false
+        openapi: swagger.json
