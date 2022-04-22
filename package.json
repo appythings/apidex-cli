@@ -1,6 +1,9 @@
 {
   "name": "@appythings/apidex-cli",
-  "version": "1.0.0",
+  "bin": {
+    "apidex-cli": "src/index.js"
+  },
+  "version": "1.0.4",
   "description": "Commandline tool to use the management APIs of Apidex",
   "main": "src/index.js",
   "keywords": [
@@ -10,21 +13,21 @@
     "api management"
   ],
   "dependencies": {
+    "@apidevtools/swagger-parser": "^10.0.3",
     "archiver": "^5.3.0",
     "axios": "^0.25.0",
     "commander": "^8.3.0",
     "form-data": "^4.0.0",
     "fs-extra": "^10.0.0",
-    "jsonwebtoken": "^8.5.1",
     "js-yaml": "^4.1.0",
+    "jsonwebtoken": "^8.5.1",
     "jsrsasign": "^10.5.1",
     "qs": "^6.10.3",
     "stream-to-promise": "^3.0.0",
     "uuid": "^8.3.2"
   },
   "devDependencies": {},
-  "scripts": {
-  },
+  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/appythings/apidex-cli.git"

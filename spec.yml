@@ -1,0 +1,83 @@
+openapi: 3.0.2
+info:
+  title: echo-v1
+  version: '1.0.3'
+  description: Just echo anything that you send it to test platform performance
+  contact:
+    name: AppyThings
+    url: 'https://www.appythings.nl'
+    email: servicedesk@appyruns.com
+servers:
+  - url: 'https://wpp-prod-dev.apigee.net'
+    description: (dev endpoint)
+  - url: 'https://wpp-prod-test.apigee.net'
+    description: (test endpoint)
+tags:
+  - name: echo
+    description: Everything about echo
+paths:
+  /:
+    get:
+      tags:
+        - echo
+      summary: Echo a string
+      operationId: echoString
+      description: Send a string in the query parameter and the API echo it in the response
+      parameters:
+        - name: echo
+          description: Any string to be returned in the response
+          in: query
+          schema:
+            type: string
+            example: testing
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                description: The valid response
+                type: string
+        '401':
+          description: Access Denied
+          content:
+            application/json:
+              schema:
+                title: Error Model
+                description: Common defintion of an error. To be used as body in combination with the HTTP status code.
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 401
+                  message:
+                    type: string
+                    example: Access denied due to invalid subscription key. Make sure to provide a valid key for an active subscription.
+        '500':
+          description: Error
+          content:
+            application/json:
+              schema:
+                title: Error Model
+                description: Common defintion of an error. To be used as body in combination with the HTTP status code.
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 401
+                  message:
+                    type: string
+                    example: Access denied due to invalid subscription key. Make sure to provide a valid key for an active subscription.
+components:
+  securitySchemes:
+    apiKeyHeader:
+      type: apiKey
+      name: apikey
+      in: header
+    apiKeyQuery:
+      type: apiKey
+      name: apikey
+      in: query
+security:
+  - apiKeyHeader: []
+  - apiKeyQuery: []

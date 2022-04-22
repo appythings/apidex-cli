@@ -15,7 +15,7 @@ class Marketplace {
     }
 
     async pushProduct(product) {
-        return this.request.post(`/api/api-dex/product`, { ...product, id: product.name, url: `${this.config.hostname}/products/${product.name}`})
+        return this.request.post(`/api/api-dex/product`, { ...product, id: product.name, url: `${this.config.frontendHost}/products/${product.name}`})
     }
 }
 

@@ -17,7 +17,7 @@ const isUpdated = (a, b, properties) => {
 module.exports = async (config, manifest) => {
   const productModel = new Apiproduct(config)
   const proxyModel = new Apiproxy(config)
-  let yml = yaml.safeLoad(fs.readFileSync(manifest, 'utf8'))
+  let yml = yaml.load(fs.readFileSync(manifest, 'utf8'))
   const productConfig = yml.products
   if (!productConfig) {
     return false

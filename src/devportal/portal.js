@@ -63,7 +63,7 @@ class Portal {
         const swagger = fs.readFileSync(spec, 'utf8')
 
         if (spec.endsWith('.yml') || spec.endsWith('.yaml')) {
-            return yaml.safeLoad(swagger)
+            return yaml.load(swagger)
         }
         if (spec.endsWith('.json')) {
             return JSON.parse(swagger)
@@ -76,7 +76,9 @@ class Portal {
             console.log(`Uploading ${product.openapi} for product: ${product.name}`)
             const parsedSwagger = await this.readSwaggerFile(product.openapi)
             await SwaggerParser.validate(product.openapi);
-            await this.login()
+            if(!this.config.token){
+                await this.login()
+            }
             return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${this.config.force ? '?force=true' : ""}`, {
                 "environmentId": this.config.environment,
                 'spec': parsedSwagger
@@ -90,7 +92,9 @@ class Portal {
     }
 
     async pushMarkdown(zipFile) {
-        await this.login()
+        if(!this.config.token){
+            await this.login()
+        }
         const form = new FormData()
         form.append('zip', zipFile, {
             filename: 'markdown.zip'

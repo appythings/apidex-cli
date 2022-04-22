@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const program = require('commander')
-const {version, name, description} = require('../package2.json')
+const {version, name, description} = require('../package.json')
 const Portal = require('./devportal/portal')
 const Marketplace = require('./devportal/module/marketplace')
 const archiver = require('archiver')
@@ -13,12 +13,13 @@ program.name(name)
 program.command('upload-spec <manifest>')
     .requiredOption('--environment <environment>', 'add the environment to deploy this to', process.env.APIDEX_ENVIRONMENT)
     .requiredOption('--host <host>', 'add the hostname for the developer portal', process.env.APIDEX_HOST)
-    .requiredOption('--clientId <clientId>', 'add the clientId from your OpenID Connect provider linked to the developer portal', process.env.APIDEX_CLIENTID)
+    .option('--clientId <clientId>', 'add the clientId from your OpenID Connect provider linked to the developer portal', process.env.APIDEX_CLIENTID)
     .option('--clientSecret <clientSecret>', 'add the clientSecret from your OpenID Connect provider linked to the developer portal', process.env.APIDEX_SECRET)
     .option('--aud <aud>', 'Only used in combination with client certificate authentication instead of clientSecret. Provide the audience for the client token.', null)
-    .requiredOption('--scope <scope>', 'add the scope for the developer portal app registration', process.env.APIDEX_SCOPE)
-    .requiredOption('--tokenUrl <tokenUrl>', 'add the tokenUrl from your OpenID Connect provider (ex: https://login.microsoftonline.com/yourcompany.onmicrosoft.com/oauth2/v2.0/token)', process.env.APIDEX_TOKENURL)
+    .option('--scope <scope>', 'add the scope for the developer portal app registration', process.env.APIDEX_SCOPE)
+    .option('--tokenUrl <tokenUrl>', 'add the tokenUrl from your OpenID Connect provider (ex: https://login.microsoftonline.com/yourcompany.onmicrosoft.com/oauth2/v2.0/token)', process.env.APIDEX_TOKENURL)
     .option('--force', 'Force the database to overwrite spec regardless of version number', false)
+    .option('--token <token>', 'provide a token instead', process.env.APIDEX_TOKEN)
     .description('uploads an openapi spec to apidex')
     .action((manifest, command) => {
         const config = {
@@ -30,7 +31,8 @@ program.command('upload-spec <manifest>')
             scope: command.scope,
             tokenUrl: command.tokenUrl,
             grantType: 'client_credentials',
-            force: command.force
+            force: command.force,
+            token: command.token
         }
 
         try {
@@ -83,6 +85,7 @@ program.command('upload-markdown <directory>')
 program.command('module-marketplace <manifest>')
     .requiredOption('--environment <environment>', 'add the environment to deploy this to', process.env.APIDEX_ENVIRONMENT)
     .requiredOption('--host <host>', 'add the hostname for the developer portal', process.env.APIDEX_HOST)
+    .requiredOption('--frontendHost <frontendHost>', 'add the hostname for the developer portal', process.env.APIDEX_FRONTEND_HOST)
     .requiredOption('--marketplaceHost <marketplaceHost>', 'add the hostname for the marketplace', process.env.APIDEX_MARKETPLACE_HOST)
     .option('--clientId <clientId>', 'add the clientId from your OpenID Connect provider linked to the developer portal', process.env.APIDEX_CLIENTID)
     .option('--clientSecret <clientSecret>', 'add the clientSecret from your OpenID Connect provider linked to the developer portal', process.env.APIDEX_SECRET)
@@ -98,6 +101,7 @@ program.command('module-marketplace <manifest>')
             clientSecret: command.clientSecret,
             aud: command.aud,
             hostname: command.host,
+            frontendHost: command.frontendHost,
             marketplaceHostname: command.marketplaceHost,
             scope: command.scope,
             tokenUrl: command.tokenUrl,
@@ -110,7 +114,7 @@ program.command('module-marketplace <manifest>')
         const products = await portal.getProducts()
         const marketplace = new Marketplace(config)
         const all = await Promise.all(products.map(product => marketplace.pushProduct(product)))
-        console.log('Succesfully pushed products to marketplace: ' + JSON.stringify(products.map(product => products.name)))
+        console.log('Succesfully pushed products to marketplace: ' + JSON.stringify(products.map(product => product.name)))
     })
 
 program.parse(process.argv)
