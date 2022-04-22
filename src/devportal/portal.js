@@ -11,10 +11,13 @@ class Portal {
         if(manifest){
             let yml = yaml.load(fs.readFileSync(manifest, 'utf8'))
             const productConfig = yml.products
-            if (!productConfig || !productConfig.find(product => product.openapi)) {
+            this.categories = yml.categories
+            if ((!productConfig || !productConfig.find(product => product.openapi)) && !this.categories) {
                 throw new Error('no product found to upload')
             }
-            this.swaggerFiles = productConfig.filter(product => product.openapi)
+            if(productConfig){
+                this.swaggerFiles = productConfig.filter(product => product.openapi)
+            }
         }
         this.config = config
         this.request = axios.create({
@@ -23,9 +26,11 @@ class Portal {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                Authorization: 'Bearer ' + config.token
             }
         })
+        if(config.token){
+            this.request.defaults.headers.common['Authorization'] = 'Bearer ' + config.token
+        }
     }
 
     async login() {
@@ -72,6 +77,9 @@ class Portal {
     }
 
     async pushSwagger() {
+        if(!this.swaggerFiles){
+            return
+        }
         return Promise.all(this.swaggerFiles.map(async product => {
             console.log(`Uploading ${product.openapi} for product: ${product.name}`)
             const parsedSwagger = await this.readSwaggerFile(product.openapi)
@@ -81,6 +89,42 @@ class Portal {
                 "environmentId": this.config.environment,
                 'spec': parsedSwagger
             })
+        }))
+    }
+
+    async pushCategories() {
+        if(!this.categories){
+            return
+        }
+        return Promise.all(this.categories.map(async category => {
+            console.log(`Uploading ${category.name}`)
+            const parsedSwagger = await this.readSwaggerFile(category.openapi)
+            await SwaggerParser.validate(category.openapi);
+            await this.login()
+            await this.request.post(`api/environments/${this.config.environment}/specs${this.config.force ? '?force=true' : ""}`, {
+                categoryId: category.name,
+                spec: parsedSwagger
+            });
+
+            return Promise.all(category.products.map(async product => {
+                    console.log(`Uploading ${product.id}`)
+                    let parsedSwagger
+                    if (product.inheritSpec === false) {
+                        if (!product.openapi) {
+                            console.log('You have to specify spec')
+                            return
+                        }
+                        parsedSwagger = await this.readSwaggerFile(product.openapi)
+                        await SwaggerParser.validate(product.openapi);
+                    }
+                    return this.request.post(`api/environments/${this.config.environment}/specs${this.config.force ? '?force=true' : ""}`, {
+                        categoryId: category.name,
+                        productId: product.id,
+                        inheritSpec: product.inheritSpec,
+                        spec: parsedSwagger
+                    })
+                }
+            ))
         }))
     }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const program = require('commander')
-const {version, name, description} = require('../package2.json')
+const {version, name, description} = require('../package.json')
 const Portal = require('./devportal/portal')
 const Marketplace = require('./devportal/module/marketplace')
 const archiver = require('archiver')
@@ -37,6 +37,12 @@ program.command('upload-spec <manifest>')
             const portal = new Portal(config, manifest)
 
             portal.pushSwagger().then(success => {
+                console.log('Successfully updated documentation')
+            }).catch(error => {
+                console.log(error.response ? error.response.data : error)
+                process.exit(1)
+            })
+            portal.pushCategories().then(success => {
                 console.log('Successfully updated documentation')
             }).catch(error => {
                 console.log(error.response ? error.response.data : error)
