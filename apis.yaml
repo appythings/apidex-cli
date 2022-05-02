@@ -1,13 +1,5 @@
 products:
-  - name: Mediacom Brand Reporting Gold
-    title: Example product silver
-    description: |
-      Silver version of the example product
-    quota: 2
-    interval: 1
-    timeunit: minute
-    proxies:
-      - echoheaders
+  - name: ID-of-the-API
     openapi: swagger.json
 categories:
   - name: category1

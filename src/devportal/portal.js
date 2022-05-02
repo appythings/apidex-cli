@@ -109,7 +109,7 @@ class Portal {
             });
 
             return Promise.all(category.products.map(async product => {
-                    console.log(`Uploading ${product.id}`)
+                    console.log(`Uploading ${product.name}`)
                     let parsedSwagger
                     if (product.inheritSpec === false) {
                         if (!product.openapi) {
@@ -121,7 +121,7 @@ class Portal {
                     }
                     return this.request.post(`api/environments/${this.config.environment}/specs${this.config.force ? '?force=true' : ""}`, {
                         categoryId: category.name,
-                        productId: product.id,
+                        productId: product.name,
                         inheritSpec: product.inheritSpec,
                         spec: parsedSwagger
                     })
