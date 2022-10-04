@@ -82,7 +82,8 @@ program.command('upload-markdown <directory>')
         const done = await streamToPromise(archive)
 
         portal.pushMarkdown(done).then(() => console.log('Successfully pushed markdown to developer portal')).catch(error => {
-            console.log(error)
+            console.log(error.request)
+            // console.log(error.response.config)
             process.exit(1)
         })
     })

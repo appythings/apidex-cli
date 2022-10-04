@@ -143,7 +143,7 @@ class Portal {
         form.append('zip', zipFile, {
             filename: 'markdown.zip'
         })
-        return axios.post(`http://${this.config.hostname}/markdown`,
+        return axios.post(`https://${this.config.hostname}/markdown`,
             form.getBuffer(),
             {
                 headers: {

@@ -1,12 +1,11 @@
 products:
   - name: ID-of-the-API
-    openapi: swagger.json
+    openapi: spec.yml
 categories:
   - name: category1
-    openapi: swagger.json
+    openapi: spec.yml
     products:
-      - id: 1234
+      - name: 1234
         inheritSpec: true
-      - id: 4321
+      - name: 4321
         inheritSpec: false
-        openapi: swagger.json
