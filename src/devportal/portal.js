@@ -87,9 +87,12 @@ class Portal {
             if(!this.config.token){
                 await this.login()
             }
-            return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${this.config.force ? '?force=true' : ""}`, {
-                "environmentId": this.config.environment,
-                'spec': parsedSwagger
+            const params = new URLSearchParams('');
+            if (this.config.force) params.append('force', 'true')
+            if (product.permissionGroup) params.append('permissiongroup', `${product.permissionGroup}`)
+            return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${params.toString() ? `?${params.toString()}` : ''}`, {
+                spec: parsedSwagger,
+                inheritSpec: false,
             })
         }))
     }
@@ -103,7 +106,7 @@ class Portal {
             const parsedSwagger = await this.readSwaggerFile(category.openapi)
             await SwaggerParser.validate(category.openapi);
             await this.login()
-            await this.request.post(`api/environments/${this.config.environment}/specs${this.config.force ? '?force=true' : ""}`, {
+            await this.request.post(`api/environments/${this.config.environment}/specs`, {
                 categoryId: category.name,
                 spec: parsedSwagger
             });
@@ -119,11 +122,13 @@ class Portal {
                         parsedSwagger = await this.readSwaggerFile(product.openapi)
                         await SwaggerParser.validate(product.openapi);
                     }
-                    return this.request.post(`api/environments/${this.config.environment}/specs${this.config.force ? '?force=true' : ""}`, {
+                    const params = new URLSearchParams('');
+                    if (this.config.force) params.append('force', 'true')
+                    if (product.permissionGroup) params.append('permissiongroup', `${product.permissionGroup}`)
+                    return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${params.toString() ? `?${params.toString()}` : ''}`, {
+                        spec: parsedSwagger,
                         categoryId: category.name,
-                        productId: product.name,
                         inheritSpec: product.inheritSpec,
-                        spec: parsedSwagger
                     })
                 }
             ))

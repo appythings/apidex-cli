@@ -10,15 +10,18 @@ To upload your API's to apidex, create a yaml file with the following content:
 products:
   - name: ID-of-the-API # For SAP and Apigee this is the name of the product, not the displayName
     openapi: swagger.json # link to an openapi spec in yaml or json format
+    permissionGroup: owners # Permission group that is allowed access to this product (optional)
 categories: # You can also bundle multiple products in a category
   - name: category1 # Choose a unique name for the category
     openapi: swagger.json # link to an openapi spec in yaml or json format
     products:
       - name: ID-of-the-API
         inheritSpec: true # You can choose to let the product inherit the spec from the category
+        permissionGroup: owners # Permission group that is allowed access to this product (optional)
       - name: ID-of-the-API
         inheritSpec: false
         openapi: swagger.json # Or the product will have it's own spec
+        permissionGroup: owners # Permission group that is allowed access to this product (optional)
 ```
 ```
 apidex-cli upload-spec [options] <manifest>
