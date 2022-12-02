@@ -87,12 +87,10 @@ class Portal {
             if(!this.config.token){
                 await this.login()
             }
-            const params = new URLSearchParams('');
-            if (this.config.force) params.append('force', 'true')
-            if (product.permissionGroup) params.append('permissiongroup', `${product.permissionGroup}`)
-            return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${params.toString() ? `?${params.toString()}` : ''}`, {
+            return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${this.config.force ? '?force=true' : ""}`, {
                 spec: parsedSwagger,
                 inheritSpec: false,
+                permissiongroup: product.permissionGroup,
             })
         }))
     }
@@ -122,13 +120,11 @@ class Portal {
                         parsedSwagger = await this.readSwaggerFile(product.openapi)
                         await SwaggerParser.validate(product.openapi);
                     }
-                    const params = new URLSearchParams('');
-                    if (this.config.force) params.append('force', 'true')
-                    if (product.permissionGroup) params.append('permissiongroup', `${product.permissionGroup}`)
-                    return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${params.toString() ? `?${params.toString()}` : ''}`, {
+                    return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${this.config.force ? '?force=true' : ""}`, {
                         spec: parsedSwagger,
                         categoryId: category.name,
                         inheritSpec: product.inheritSpec,
+                        permissiongroup: product.permissionGroup,
                     })
                 }
             ))
