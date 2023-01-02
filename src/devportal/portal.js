@@ -88,8 +88,9 @@ class Portal {
                 await this.login()
             }
             return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${this.config.force ? '?force=true' : ""}`, {
-                "environmentId": this.config.environment,
-                'spec': parsedSwagger
+                spec: parsedSwagger,
+                inheritSpec: false,
+                permissiongroup: product.permissionGroup,
             })
         }))
     }
@@ -103,7 +104,7 @@ class Portal {
             const parsedSwagger = await this.readSwaggerFile(category.openapi)
             await SwaggerParser.validate(category.openapi);
             await this.login()
-            await this.request.post(`api/environments/${this.config.environment}/specs${this.config.force ? '?force=true' : ""}`, {
+            await this.request.post(`api/environments/${this.config.environment}/specs`, {
                 categoryId: category.name,
                 spec: parsedSwagger
             });
@@ -119,11 +120,11 @@ class Portal {
                         parsedSwagger = await this.readSwaggerFile(product.openapi)
                         await SwaggerParser.validate(product.openapi);
                     }
-                    return this.request.post(`api/environments/${this.config.environment}/specs${this.config.force ? '?force=true' : ""}`, {
+                    return this.request.post(`api/environments/${this.config.environment}/apiproducts/${product.name}/specs${this.config.force ? '?force=true' : ""}`, {
+                        spec: parsedSwagger,
                         categoryId: category.name,
-                        productId: product.name,
                         inheritSpec: product.inheritSpec,
-                        spec: parsedSwagger
+                        permissiongroup: product.permissionGroup,
                     })
                 }
             ))

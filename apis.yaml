@@ -1,6 +1,7 @@
 products:
   - name: ID-of-the-API
     openapi: spec.yml
+    permissionGroup: owners
 categories:
   - name: category1
     openapi: spec.yml
@@ -9,3 +10,4 @@ categories:
         inheritSpec: true
       - name: 4321
         inheritSpec: false
+        permissionGroup: owners
