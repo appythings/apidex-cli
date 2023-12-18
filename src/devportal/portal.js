@@ -104,7 +104,8 @@ class Portal {
             const parsedSwagger = await this.readSwaggerFile(category.openapi)
             await SwaggerParser.validate(category.openapi);
             await this.login()
-            await this.request.post(`api/environments/${this.config.environment}/specs`, {
+            await this.request.post(`api/specs`, {
+                environmentId: this.config.environment,
                 categoryId: category.name,
                 spec: parsedSwagger
             });
