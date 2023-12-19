@@ -3,7 +3,7 @@
   "bin": {
     "apidex-cli": "src/index.js"
   },
-  "version": "1.0.8",
+  "version": "1.0.10",
   "description": "Commandline tool to use the management APIs of Apidex",
   "main": "src/index.js",
   "keywords": [

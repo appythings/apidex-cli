@@ -91,6 +91,10 @@ class Portal {
                 spec: parsedSwagger,
                 inheritSpec: false,
                 permissiongroup: product.permissionGroup,
+                latest: true,
+            }).catch(e => {
+                console.log(`Failed to upload ${product.name}`)
+                throw e;
             })
         }))
     }
@@ -107,7 +111,8 @@ class Portal {
             await this.request.post(`api/specs`, {
                 environmentId: this.config.environment,
                 categoryId: category.name,
-                spec: parsedSwagger
+                spec: parsedSwagger,
+                latest: true,
             });
 
             return Promise.all(category.products.map(async product => {
@@ -126,6 +131,10 @@ class Portal {
                         categoryId: category.name,
                         inheritSpec: product.inheritSpec,
                         permissiongroup: product.permissionGroup,
+                        latest: true,
+                    }).catch(e => {
+                        console.log(`Failed to upload ${product.name}`)
+                        throw e;
                     })
                 }
             ))

@@ -40,13 +40,13 @@ program.command('upload-spec <manifest>')
             portal.pushSwagger().then(success => {
                 console.log('Successfully updated documentation')
             }).catch(error => {
-                console.log(error.response ? error.response.data : error)
+                console.log(error.response ? JSON.stringify(error.response.data) : error)
                 process.exit(1)
             })
             portal.pushCategories().then(success => {
                 console.log('Successfully updated documentation')
             }).catch(error => {
-                console.log(error.response ? error.response.data : error)
+                console.log(error.response ? JSON.stringify(error.response.data) : error)
                 process.exit(1)
             })
         } catch (e) {
