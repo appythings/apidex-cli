@@ -11,3 +11,8 @@ categories:
       - name: 4321
         inheritSpec: false
         permissionGroup: owners
+teams:
+  - name: team-name
+    owner: owner@test.com
+    permissionGroups:
+      - owners

@@ -49,6 +49,12 @@ program.command('upload-spec <manifest>')
                 console.log(error.response ? JSON.stringify(error.response.data) : error)
                 process.exit(1)
             })
+            portal.pushTeams().then(success => {
+                console.log('Successfully updated teams')
+            }).catch(error => {
+                console.log(error.response ? JSON.stringify(error.response.data) : error)
+                process.exit(1)
+            })
         } catch (e) {
             console.log(e.message)
         }

@@ -10,6 +10,7 @@ class Portal {
     constructor(config, manifest) {
         if(manifest){
             let yml = yaml.load(fs.readFileSync(manifest, 'utf8'))
+            this.teamConfig = yml.teams
             const productConfig = yml.products
             this.categories = yml.categories
             if ((!productConfig || !productConfig.find(product => product.openapi)) && !this.categories) {
@@ -138,6 +139,32 @@ class Portal {
                     })
                 }
             ))
+        }))
+    }
+
+    async pushTeams() {
+        if(!this.teamConfig){
+            return
+        }
+        return Promise.all(this.teamConfig.map(async team => {
+            console.log(`Uploading ${team.name}`)
+            if(!this.config.token){
+                await this.login()
+            }
+            await this.request.post(`api/teams`, {
+                // hier de team naam e.d.
+            }).catch(e => {
+                console.log(`Failed to upload ${product.name}`)
+                throw e;
+            })
+            // updaten van de owner in het team
+            await this.request.put(`api/teams`, {
+                // hier de team naam e.d.
+            })
+            // toevoegen van het team aan de permission group
+            await this.request.post(`api/teams/{id}/permissiongroups`, {
+                // hier de permissingroup ID of naam??
+            })
         }))
     }
 
