@@ -190,7 +190,6 @@ class Portal {
 
         let teamId;
         try {
-          // First, retrieve the list of teams
           const teamsResponse = await this.request.get(`api/teams`);
 
           // Check if team already exists
@@ -217,7 +216,7 @@ class Portal {
 
           if (result?.status !== 200 && !result?.data.id) {
             console.log(`102 - Failed to upload ${team.name}`);
-            return; // Early return from this team's processing instead of continue
+            return;
           }
 
           teamId = result.data.id;
