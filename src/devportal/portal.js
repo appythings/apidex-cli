@@ -272,6 +272,9 @@ class Portal {
         } catch (teamError) {
           console.log(
             `Error processing team ${team.name}: ${teamError.message}`,
+            teamError.response
+              ? JSON.stringify(teamError.response.data)
+              : '',
           ); // Continue with next team via early return
           return;
         }
