@@ -3,7 +3,7 @@
   "bin": {
     "apidex-cli": "src/index.js"
   },
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Commandline tool to use the management APIs of Apidex",
   "main": "src/index.js",
   "keywords": [
@@ -13,20 +13,19 @@
     "api management"
   ],
   "dependencies": {
-    "@apidevtools/swagger-parser": "^10.0.3",
-    "archiver": "^5.3.0",
+    "@apidevtools/swagger-parser": "^10.1.1",
+    "archiver": "^5.3.2",
     "axios": "^0.25.0",
     "commander": "^8.3.0",
-    "form-data": "^4.0.0",
-    "fs-extra": "^10.0.0",
+    "form-data": "^4.0.2",
+    "fs-extra": "^10.1.0",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^8.5.1",
-    "jsrsasign": "^10.5.1",
-    "qs": "^6.10.3",
+    "jsrsasign": "^10.9.0",
+    "qs": "^6.14.0",
     "stream-to-promise": "^3.0.0",
     "uuid": "^8.3.2"
   },
-  "devDependencies": {},
   "scripts": {},
   "repository": {
     "type": "git",
@@ -37,5 +36,6 @@
   "bugs": {
     "url": "https://github.com/appythings/apidex-cli/issues"
   },
-  "homepage": "https://github.com/appythings/apidex-cli#readme"
+  "homepage": "https://github.com/appythings/apidex-cli#readme",
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
