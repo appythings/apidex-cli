@@ -4,6 +4,8 @@ const {version, name, description} = require('../package.json');
 const Portal = require('./devportal/portal');
 const archiver = require('archiver');
 const streamToPromise = require('stream-to-promise');
+const {runUploadSpecCli} = require('./commands/upload-spec');
+const {runUploadMarkdownCli} = require('./commands/upload-markdown');
 
 program.name(name).version(version, '-v, --version').description(description);
 
@@ -55,7 +57,7 @@ program
     process.env.APIDEX_TOKEN,
   )
   .description('uploads an openapi spec to apidex')
-  .action((manifest, command) => {
+  .action(async (manifest, command) => {
     const config = {
       environment: command.environment,
       clientId: command.clientId,
@@ -71,42 +73,10 @@ program
 
     try {
       const portal = new Portal(config, manifest);
-
-      portal
-        .pushSwagger()
-        .then(success => {
-          console.log('Successfully updated documentation');
-        })
-        .catch(error => {
-          console.log(
-            error.response ? JSON.stringify(error.response.data) : error,
-          );
-          process.exit(1);
-        });
-      portal
-        .pushCategories()
-        .then(success => {
-          console.log('Successfully updated documentation');
-        })
-        .catch(error => {
-          console.log(
-            error.response ? JSON.stringify(error.response.data) : error,
-          );
-          process.exit(1);
-        });
-      portal
-        .pushTeams()
-        .then(success => {
-          console.log('Successfully updated teams');
-        })
-        .catch(error => {
-          console.log(
-            error.response ? JSON.stringify(error.response.data) : error,
-          );
-          process.exit(1);
-        });
+      await runUploadSpecCli(portal);
     } catch (e) {
       console.log(e.message);
+      process.exit(1);
     }
   });
 
@@ -162,16 +132,7 @@ program
 
     const done = await streamToPromise(archive);
 
-    portal
-      .pushMarkdown(done)
-      .then(() =>
-        console.log('Successfully pushed markdown to developer portal'),
-      )
-      .catch(error => {
-        console.log(error.request);
-        // console.log(error.response.config)
-        process.exit(1);
-      });
+    await runUploadMarkdownCli(portal, done);
   });
 
 program.parse(process.argv);

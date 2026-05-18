@@ -12,6 +12,9 @@
     "developer portal",
     "api management"
   ],
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.1",
     "archiver": "^5.3.2",
@@ -26,7 +29,9 @@
     "stream-to-promise": "^3.0.0",
     "uuid": "^8.3.2"
   },
-  "scripts": {},
+  "scripts": {
+    "test": "jest --coverage --runInBand"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/appythings/apidex-cli.git"

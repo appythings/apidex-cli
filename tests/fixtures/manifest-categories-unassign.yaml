@@ -1,0 +1,7 @@
+categories:
+  - name: cat1
+    openapi: category-spec.yaml
+    products:
+      - name: sub-prod
+        inheritSpec: true
+        backendTeam: ~
