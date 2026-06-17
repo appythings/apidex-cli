@@ -216,6 +216,27 @@ describe('Portal', () => {
 
       await expect(portal.pushBackendTeams()).rejects.toThrow(/not backend$/m);
     });
+
+    it('throws when create response has status 200 but no team id', async () => {
+      const mf = path.join(fixtures, 'manifest-backend-assign.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({
+        status: 200,
+        data: {},
+      });
+
+      await expect(portal.pushBackendTeams()).rejects.toThrow(
+        /Unexpected response creating backend team/,
+      );
+    });
   });
 
   describe('assignBackendTeamsFromManifest', () => {
@@ -558,6 +579,38 @@ describe('Portal', () => {
       await portal.pushTeams();
 
       expect(portal.request.post).toHaveBeenCalled();
+      jest.restoreAllMocks();
+    });
+
+    it('logs failure and skips permission groups when create response has no id', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const manifestWithTeams = path.join(fixtures, 'manifest-with-team.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        manifestWithTeams,
+      );
+
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({
+        status: 200,
+        data: {},
+      });
+
+      await portal.pushTeams();
+
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('102 - Failed to upload'),
+        ),
+      ).toBe(true);
+      const permGroupCalls = portal.request.post.mock.calls.filter(([url]) =>
+        String(url).includes('/permissiongroups'),
+      );
+      expect(permGroupCalls).toHaveLength(0);
       jest.restoreAllMocks();
     });
   });

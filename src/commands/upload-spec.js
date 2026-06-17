@@ -5,11 +5,12 @@ const {formatRequestError} = require('../lib/formatAxiosError');
  * @returns {Promise<void>}
  */
 async function runUploadSpec(portal) {
-  await portal.pushSwagger();
+  await Promise.all([
+    portal.pushSwagger(),
+    portal.pushCategories(),
+    portal.pushTeams(),
+  ]);
   console.log('Successfully updated documentation');
-  await portal.pushCategories();
-  console.log('Successfully updated documentation');
-  await portal.pushTeams();
   console.log('Successfully updated teams');
   await portal.pushBackendTeams();
   if (portal.backendTeamConfig && portal.backendTeamConfig.length > 0) {

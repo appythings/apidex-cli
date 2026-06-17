@@ -245,7 +245,7 @@ class Portal {
             );
           }
 
-          if (result?.status !== 200 && !result?.data.id) {
+          if (result?.status !== 200 || !result?.data?.id) {
             console.log(`102 - Failed to upload ${team.name}`);
             return;
           }
@@ -360,7 +360,7 @@ class Portal {
             });
           }
 
-          if (result?.status !== 200 && !result?.data.id) {
+          if (result?.status !== 200 || !result?.data?.id) {
             throw new Error(
               `Unexpected response creating backend team ${team.name}`,
             );

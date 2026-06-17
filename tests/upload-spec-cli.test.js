@@ -6,8 +6,8 @@ describe('runUploadSpecCli', () => {
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
     const portal = {
       pushSwagger: jest.fn().mockRejectedValue(new Error('boom')),
-      pushCategories: jest.fn(),
-      pushTeams: jest.fn(),
+      pushCategories: jest.fn().mockResolvedValue(),
+      pushTeams: jest.fn().mockResolvedValue(),
       pushBackendTeams: jest.fn(),
       assignBackendTeamsFromManifest: jest.fn(),
     };
@@ -37,6 +37,8 @@ describe('runUploadSpecCli', () => {
           baseURL: 'https://h',
         },
       }),
+      pushCategories: jest.fn().mockResolvedValue(),
+      pushTeams: jest.fn().mockResolvedValue(),
     };
 
     await runUploadSpecCli(portal, {
