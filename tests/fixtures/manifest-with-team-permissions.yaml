@@ -1,0 +1,9 @@
+products:
+  - name: api-product-1
+    openapi: swagger-min.yaml
+teams:
+  - name: cli-team
+    owner: owner@example.test
+    permissionGroups:
+      - group-a
+      - group-b

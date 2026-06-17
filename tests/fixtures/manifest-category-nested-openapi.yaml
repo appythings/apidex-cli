@@ -1,0 +1,7 @@
+categories:
+  - name: cat-nested
+    openapi: category-spec.yaml
+    products:
+      - name: nested-prod
+        inheritSpec: false
+        openapi: swagger-min.yaml

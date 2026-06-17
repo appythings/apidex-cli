@@ -237,9 +237,138 @@ describe('Portal', () => {
         /Unexpected response creating backend team/,
       );
     });
+
+    it('skips existing backend permission group', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const mf = path.join(fixtures, 'manifest-backend-permissions.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest
+        .spyOn(portal.request, 'get')
+        .mockResolvedValueOnce({data: []})
+        .mockResolvedValueOnce({data: [{name: 'group-a'}]});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({
+        status: 200,
+        data: {
+          id: 'tid',
+          name: 'backend-perm-test',
+          teamType: 'backend',
+        },
+      });
+
+      await portal.pushBackendTeams();
+
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('group-a') &&
+          String(c[0]).includes('already exists'),
+        ),
+      ).toBe(true);
+      const pgPosts = portal.request.post.mock.calls.filter(
+        ([u, body]) =>
+          typeof u === 'string' &&
+          u.includes('/permissiongroups') &&
+          body?.name === 'group-a',
+      );
+      expect(pgPosts).toHaveLength(0);
+      jest.restoreAllMocks();
+    });
+
+    it('logs and continues when backend permission group POST fails', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const mf = path.join(fixtures, 'manifest-backend-permissions.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest
+        .spyOn(portal.request, 'get')
+        .mockResolvedValueOnce({data: []})
+        .mockResolvedValueOnce({data: []});
+      jest
+        .spyOn(portal.request, 'post')
+        .mockResolvedValueOnce({
+          status: 200,
+          data: {
+            id: 'tid',
+            name: 'backend-perm-test',
+            teamType: 'backend',
+          },
+        })
+        .mockRejectedValueOnce(new Error('backend perm fail'));
+
+      await portal.pushBackendTeams();
+
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('Failed to add permission group'),
+        ),
+      ).toBe(true);
+      jest.restoreAllMocks();
+    });
+
+    it('logs and returns when fetching backend permission groups fails', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const mf = path.join(fixtures, 'manifest-backend-permissions.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest
+        .spyOn(portal.request, 'get')
+        .mockResolvedValueOnce({data: []})
+        .mockRejectedValueOnce(new Error('get backend perm groups fail'));
+      jest.spyOn(portal.request, 'post').mockResolvedValue({
+        status: 200,
+        data: {
+          id: 'tid',
+          name: 'backend-perm-test',
+          teamType: 'backend',
+        },
+      });
+
+      await portal.pushBackendTeams();
+
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('Failed to retrieve permission groups'),
+        ),
+      ).toBe(true);
+      jest.restoreAllMocks();
+    });
   });
 
   describe('assignBackendTeamsFromManifest', () => {
+    it('returns immediately when there are no assignments', async () => {
+      const portal = new Portal({
+        hostname: 'https://portal.test',
+        environment: 'e1',
+        token: 'tok',
+      });
+      portal.backendTeamAssignments = [];
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+
+      await portal.assignBackendTeamsFromManifest();
+
+      expect(portal.request.get).not.toHaveBeenCalled();
+      expect(portal.request.post).not.toHaveBeenCalled();
+    });
+
     it('assigns resolved backend team id', async () => {
       const mf = path.join(fixtures, 'manifest-backend-assign.yaml');
       const portal = new Portal(
@@ -554,9 +683,64 @@ describe('Portal', () => {
         ),
       ).toBe(true);
     });
+
+    it('uploads nested product spec when inheritSpec is false', async () => {
+      const yamlPath = path.join(
+        fixtures,
+        'manifest-category-nested-openapi.yaml',
+      );
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        yamlPath,
+      );
+      portal.login = jest.fn().mockResolvedValue();
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+
+      await portal.pushCategories();
+
+      const nestedUploads = portal.request.post.mock.calls.filter(([u]) =>
+        String(u).includes('apiproducts/nested-prod'),
+      );
+      expect(nestedUploads.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('logs and rethrows when nested category product upload fails', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const yamlPath = path.join(
+        fixtures,
+        'manifest-category-nested-openapi.yaml',
+      );
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        yamlPath,
+      );
+      portal.login = jest.fn().mockResolvedValue();
+      jest
+        .spyOn(portal.request, 'post')
+        .mockResolvedValueOnce({})
+        .mockRejectedValueOnce(new Error('nested upload fail'));
+
+      await expect(portal.pushCategories()).rejects.toThrow(
+        'nested upload fail',
+      );
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('Failed to upload nested-prod'),
+        ),
+      ).toBe(true);
+      jest.restoreAllMocks();
+    });
   });
 
-  describe('pushTeams create flow', () => {
+  describe('pushTeams', () => {
     it('creates normal team via API', async () => {
       jest.spyOn(console, 'log').mockImplementation(() => {});
       const manifestWithTeams = path.join(fixtures, 'manifest-with-team.yaml');
@@ -611,6 +795,213 @@ describe('Portal', () => {
         String(url).includes('/permissiongroups'),
       );
       expect(permGroupCalls).toHaveLength(0);
+      jest.restoreAllMocks();
+    });
+
+    it('reuses existing normal team', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const mf = path.join(fixtures, 'manifest-with-team.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({
+        data: [{id: 'existing-id', name: 'cli-team'}],
+      });
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+
+      await portal.pushTeams();
+
+      const createTeamCalls = portal.request.post.mock.calls.filter(
+        ([url]) => typeof url === 'string' && /^api\/teams(?:\?|$)/.test(url),
+      );
+      expect(createTeamCalls).toHaveLength(0);
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('already exists'),
+        ),
+      ).toBe(true);
+      jest.restoreAllMocks();
+    });
+
+    it('calls login when token is missing', async () => {
+      const mf = path.join(fixtures, 'manifest-with-team.yaml');
+      const portal = new Portal(
+        {hostname: 'https://portal.test', environment: 'e1'},
+        mf,
+      );
+      portal.login = jest.fn().mockImplementation(async () => {
+        portal.request.defaults.headers.common.Authorization = 'Bearer t';
+      });
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({
+        status: 200,
+        data: {id: 'team-1', name: 'cli-team'},
+      });
+
+      await portal.pushTeams();
+
+      expect(portal.login).toHaveBeenCalled();
+    });
+
+    it('adds new permission groups for normal teams', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const mf = path.join(fixtures, 'manifest-with-team-permissions.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest
+        .spyOn(portal.request, 'get')
+        .mockResolvedValueOnce({data: []})
+        .mockResolvedValueOnce({data: []});
+      jest
+        .spyOn(portal.request, 'post')
+        .mockResolvedValueOnce({
+          status: 200,
+          data: {id: 'tid', name: 'cli-team'},
+        })
+        .mockResolvedValueOnce({status: 200, data: {name: 'group-a'}})
+        .mockResolvedValueOnce({status: 200, data: {name: 'group-b'}});
+
+      await portal.pushTeams();
+
+      const pgPosts = portal.request.post.mock.calls.filter(
+        ([u]) => typeof u === 'string' && u.includes('/permissiongroups'),
+      );
+      expect(pgPosts.length).toBeGreaterThanOrEqual(1);
+      jest.restoreAllMocks();
+    });
+
+    it('skips existing permission groups for normal teams', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const mf = path.join(fixtures, 'manifest-with-team-permissions.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest
+        .spyOn(portal.request, 'get')
+        .mockResolvedValueOnce({data: []})
+        .mockResolvedValueOnce({data: [{name: 'group-a'}]});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({
+        status: 200,
+        data: {id: 'tid', name: 'cli-team'},
+      });
+
+      await portal.pushTeams();
+
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('group-a') &&
+          String(c[0]).includes('already exists'),
+        ),
+      ).toBe(true);
+      const pgPosts = portal.request.post.mock.calls.filter(
+        ([u, body]) =>
+          typeof u === 'string' &&
+          u.includes('/permissiongroups') &&
+          body?.name === 'group-a',
+      );
+      expect(pgPosts).toHaveLength(0);
+      jest.restoreAllMocks();
+    });
+
+    it('logs and continues when permission group POST fails', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const mf = path.join(fixtures, 'manifest-with-team-permissions.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest
+        .spyOn(portal.request, 'get')
+        .mockResolvedValueOnce({data: []})
+        .mockResolvedValueOnce({data: []});
+      jest
+        .spyOn(portal.request, 'post')
+        .mockResolvedValueOnce({
+          status: 200,
+          data: {id: 'tid', name: 'cli-team'},
+        })
+        .mockRejectedValueOnce(new Error('perm fail'));
+
+      await portal.pushTeams();
+
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('Failed to add permission group'),
+        ),
+      ).toBe(true);
+      jest.restoreAllMocks();
+    });
+
+    it('logs and returns when fetching permission groups fails', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const mf = path.join(fixtures, 'manifest-with-team-permissions.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest
+        .spyOn(portal.request, 'get')
+        .mockResolvedValueOnce({data: []})
+        .mockRejectedValueOnce(new Error('get perm groups fail'));
+      jest.spyOn(portal.request, 'post').mockResolvedValue({
+        status: 200,
+        data: {id: 'tid', name: 'cli-team'},
+      });
+
+      await portal.pushTeams();
+
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('Failed to retrieve permission groups'),
+        ),
+      ).toBe(true);
+      jest.restoreAllMocks();
+    });
+
+    it('logs and continues when team processing fails', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      const mf = path.join(fixtures, 'manifest-with-team.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockRejectedValue(new Error('teams down'));
+
+      await portal.pushTeams();
+
+      expect(
+        console.log.mock.calls.some(c =>
+          String(c[0]).includes('Error processing team'),
+        ),
+      ).toBe(true);
       jest.restoreAllMocks();
     });
   });

@@ -81,7 +81,7 @@ Options:
 npm test
 ```
 
-Coverage thresholds are enforced in `jest.config.js`: high bar for `src/lib/formatAxiosError.js`, aggregate floors for commands and `portal.js` (~80%+ — increase over time toward 95%).
+Coverage thresholds are enforced in `jest.config.js`: 90% global minimum, with higher bars for `formatAxiosError.js` and `portal.js`.
 
 ### Manual integration verification
 
