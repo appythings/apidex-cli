@@ -1,0 +1,3 @@
+products:
+  - name: api-product-oas31-invalid
+    openapi: spec-oas31-invalid.yaml
