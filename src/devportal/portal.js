@@ -5,14 +5,46 @@ const yaml = require('js-yaml');
 const fs = require('fs-extra');
 const FormData = require('form-data');
 const jwt = require('../lib/jwt');
+const {formatRequestError} = require('../lib/formatAxiosError');
 
 class Portal {
+  /** @param {Record<string, unknown>} yml */
+  static collectBackendTeamAssignments(yml) {
+    const out = [];
+    if (Array.isArray(yml.products)) {
+      for (const p of yml.products) {
+        if (Object.prototype.hasOwnProperty.call(p, 'backendTeam')) {
+          out.push({productName: p.name, backendTeam: p.backendTeam});
+        }
+      }
+    }
+    if (Array.isArray(yml.categories)) {
+      for (const cat of yml.categories) {
+        if (!Array.isArray(cat.products)) {
+          continue;
+        }
+        for (const p of cat.products) {
+          if (Object.prototype.hasOwnProperty.call(p, 'backendTeam')) {
+            out.push({productName: p.name, backendTeam: p.backendTeam});
+          }
+        }
+      }
+    }
+    return out;
+  }
+
   constructor(config, manifest) {
+    this.backendTeamConfig = [];
+    this.backendTeamAssignments = [];
     if (manifest) {
       let yml = yaml.load(fs.readFileSync(manifest, 'utf8'));
       this.teamConfig = yml.teams;
+      this.backendTeamConfig = Array.isArray(yml.backendTeams)
+        ? yml.backendTeams
+        : [];
       const productConfig = yml.products;
       this.categories = yml.categories;
+      this.backendTeamAssignments = Portal.collectBackendTeamAssignments(yml);
       if (
         (!productConfig || !productConfig.find(product => product.openapi)) &&
         !this.categories
@@ -213,7 +245,7 @@ class Portal {
             );
           }
 
-          if (result?.status !== 200 && !result?.data.id) {
+          if (result?.status !== 200 || !result?.data?.id) {
             console.log(`102 - Failed to upload ${team.name}`);
             return;
           }
@@ -257,26 +289,218 @@ class Portal {
                     );
                   } catch (permError) {
                     console.log(
-                      `Failed to add permission group ${permissionGroup}: ${permError.message}`,
+                      `Failed to add permission group ${permissionGroup}: ${formatRequestError(
+                        permError,
+                      )}`,
                     ); // Continue with other permission groups instead of throwing
                   }
                 }),
               );
             } catch (permGroupsError) {
               console.log(
-                `Failed to retrieve permission groups for team ${team.name}: ${permGroupsError.message}`,
+                `Failed to retrieve permission groups for team ${team.name}: ${formatRequestError(
+                  permGroupsError,
+                )}`,
               ); // Continue with next team via early return
               return;
             }
           }
         } catch (teamError) {
           console.log(
-            `Error processing team ${team.name}: ${teamError.message}`,
+            `Error processing team ${team.name}: ${formatRequestError(
+              teamError,
+            )}`,
           ); // Continue with next team via early return
           return;
         }
       }),
     );
+  }
+
+  async pushBackendTeams() {
+    if (!this.backendTeamConfig || this.backendTeamConfig.length === 0) {
+      return;
+    }
+    return Promise.all(
+      this.backendTeamConfig.map(async team => {
+        if (!this.config.token) {
+          await this.login();
+        }
+
+        let teamId;
+        try {
+          const teamsResponse = await this.request.get(`api/teams`);
+
+          const existingTeam = teamsResponse.data.find(
+            t => t.name === team.name,
+          );
+
+          let result;
+          if (existingTeam) {
+            if (existingTeam.teamType !== 'backend') {
+              throw new Error(
+                `Backend team "${team.name}" conflicts with existing team "${team.name}" whose teamType is ${
+                  existingTeam.teamType || 'normal'
+                }, not backend`,
+              );
+            }
+            console.log(
+              `Backend team ${team.name} already exists, using existing team ID: ${existingTeam.id}`,
+            );
+            result = {status: 200, data: existingTeam};
+          } else {
+            console.log(`Creating backend team ${team.name}`);
+            const developerQuery =
+              team.owner != null && team.owner !== ''
+                ? `?developerId=${encodeURIComponent(team.owner)}`
+                : '';
+            result = await this.request.post(`api/teams${developerQuery}`, {
+              name: team.name,
+              teamType: 'backend',
+            });
+          }
+
+          if (result?.status !== 200 || !result?.data?.id) {
+            throw new Error(
+              `Unexpected response creating backend team ${team.name}`,
+            );
+          }
+
+          teamId = result.data.id;
+          console.log(`Backend team ID: ${teamId}`);
+
+          if (team.permissionGroups) {
+            console.log(
+              `Adding permission groups ${team.permissionGroups.join(', ')}`,
+            );
+
+            try {
+              const existingPermGroupsResponse = await this.request.get(
+                `api/teams/${teamId}/permissiongroups`,
+              );
+
+              const existingPermGroups = existingPermGroupsResponse.data || [];
+
+              await Promise.all(
+                team.permissionGroups.map(async permissionGroup => {
+                  const permGroupExists = existingPermGroups.some(
+                    existingPerm => existingPerm.name === permissionGroup,
+                  );
+
+                  if (permGroupExists) {
+                    console.log(
+                      `Permission group ${permissionGroup} already exists for backend team ${team.name}, skipping`,
+                    );
+                    return;
+                  }
+
+                  console.log(`Adding permission group ${permissionGroup}`);
+                  try {
+                    await this.request.post(
+                      `api/teams/${teamId}/permissiongroups`,
+                      {
+                        name: permissionGroup,
+                      },
+                    );
+                  } catch (permError) {
+                    console.log(
+                      `Failed to add permission group ${permissionGroup}: ${formatRequestError(
+                        permError,
+                      )}`,
+                    );
+                  }
+                }),
+              );
+            } catch (permGroupsError) {
+              console.log(
+                `Failed to retrieve permission groups for backend team ${team.name}: ${formatRequestError(
+                  permGroupsError,
+                )}`,
+              );
+              return;
+            }
+          }
+        } catch (teamError) {
+          throw new Error(
+            `Error processing backend team ${team.name}: ${formatRequestError(
+              teamError,
+            )}`,
+          );
+        }
+      }),
+    );
+  }
+
+  async assignBackendTeamsFromManifest() {
+    if (
+      !this.backendTeamAssignments ||
+      this.backendTeamAssignments.length === 0
+    ) {
+      return;
+    }
+    if (!this.config.environment) {
+      throw new Error(
+        'Missing environment id — backend team assignment requires --environment',
+      );
+    }
+    if (!this.config.token) {
+      await this.login();
+    }
+
+    const teamsResponse = await this.request.get(`api/teams`);
+    const teams = teamsResponse.data || [];
+
+    for (const assignment of this.backendTeamAssignments) {
+      const {productName, backendTeam} = assignment;
+
+      if (backendTeam === null) {
+        await this.request.post(
+          `api/environments/${encodeURIComponent(this.config.environment)}/apiproducts/${encodeURIComponent(
+            productName,
+          )}/assign-backend-team`,
+          {backendTeamId: null},
+        );
+        console.log(`Unassigned backend team for API product ${productName}`);
+        continue;
+      }
+
+      if (
+        typeof backendTeam !== 'string' ||
+        (backendTeam.trim && backendTeam.trim() === '')
+      ) {
+        throw new Error(
+          `Invalid backendTeam for API product "${productName}": expected a non-empty string or null (YAML ~) to unassign`,
+        );
+      }
+
+      const match = teams.find(
+        t => t.name === backendTeam && t.teamType === 'backend',
+      );
+
+      if (!match) {
+        const wrongType = teams.find(t => t.name === backendTeam);
+        if (wrongType) {
+          throw new Error(
+            `Cannot assign backend team "${backendTeam}" to API product "${productName}": a team with that name exists but teamType is ${
+              wrongType.teamType || 'normal'
+            }, not backend`,
+          );
+        }
+        throw new Error(
+          `Cannot assign backend team to API product "${productName}": no backend team named "${backendTeam}" found (declare it under backendTeams in the manifest first)`,
+        );
+      }
+
+      await this.request.post(
+        `api/environments/${encodeURIComponent(this.config.environment)}/apiproducts/${encodeURIComponent(
+          productName,
+        )}/assign-backend-team`,
+        {backendTeamId: match.id},
+      );
+      console.log(
+        `Assigned backend team ${backendTeam} to API product ${productName}`,
+      );
+    }
   }
 
   async getProducts() {
