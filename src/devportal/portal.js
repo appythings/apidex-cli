@@ -218,6 +218,7 @@ class Portal {
         if (!this.config.token) {
           await this.login();
         }
+        console.log(team)
 
         let teamId;
         try {
@@ -281,6 +282,18 @@ class Portal {
 
                   console.log(`Adding permission group ${permissionGroup}`);
                   try {
+
+                    const existingPermissionGroup = await this.request.get(
+                        `api/permissiongroups?filter={"where": { "name":"${permissionGroup}" } }`,
+                      );
+                    if (existingPermissionGroup.data.length > 0) {
+                      console.log(`Adding team to existing permission group ${existingPermissionGroup.data[0].id}`);
+                      await this.request.put(
+                        `api/teams/${teamId}/permissiongroups/rel/${existingPermissionGroup.data[0].id}`,
+                      );
+                      return;
+                    }
+                    console.log(`Adding team to new permission group ${permissionGroup}`);
                     await this.request.post(
                       `api/teams/${teamId}/permissiongroups`,
                       {
