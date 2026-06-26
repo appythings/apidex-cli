@@ -1,2 +1,6 @@
 /node_modules
 /.idea
+
+# Jest coverage: keep lcov.info only
+coverage/*
+!coverage/lcov.info

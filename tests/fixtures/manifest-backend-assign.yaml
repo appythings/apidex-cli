@@ -1,0 +1,7 @@
+products:
+  - name: api-product-1
+    openapi: swagger-min.yaml
+    backendTeam: backend-alpha
+backendTeams:
+  - name: backend-alpha
+    owner: owner@example.test

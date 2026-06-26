@@ -1,0 +1,6 @@
+categories:
+  - name: c1
+    openapi: category-spec.yaml
+    products:
+      - name: bad-product
+        inheritSpec: false

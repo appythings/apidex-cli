@@ -10,9 +10,16 @@ categories:
         inheritSpec: true
       - name: 4321
         inheritSpec: false
+        openapi: spec.yml
         permissionGroup: owners
+        backendTeam: backend-squad
 teams:
   - name: team-name
+    owner: owner@test.com
+    permissionGroups:
+      - owners
+backendTeams:
+  - name: backend-squad
     owner: owner@test.com
     permissionGroups:
       - owners
