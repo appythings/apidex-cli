@@ -218,7 +218,6 @@ class Portal {
         if (!this.config.token) {
           await this.login();
         }
-        console.log(team)
 
         let teamId;
         try {
