@@ -859,10 +859,21 @@ describe('Portal', () => {
         },
         mf,
       );
-      jest
-        .spyOn(portal.request, 'get')
-        .mockResolvedValueOnce({data: []})
-        .mockResolvedValueOnce({data: []});
+      jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+        if (url === 'api/teams') {
+          return {data: []};
+        }
+        if (
+          String(url).startsWith('api/teams/') &&
+          String(url).endsWith('/permissiongroups')
+        ) {
+          return {data: []};
+        }
+        if (String(url).includes('api/permissiongroups?filter')) {
+          return {data: []};
+        }
+        return {data: []};
+      });
       jest
         .spyOn(portal.request, 'post')
         .mockResolvedValueOnce({
@@ -892,10 +903,21 @@ describe('Portal', () => {
         },
         mf,
       );
-      jest
-        .spyOn(portal.request, 'get')
-        .mockResolvedValueOnce({data: []})
-        .mockResolvedValueOnce({data: [{name: 'group-a'}]});
+      jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+        if (url === 'api/teams') {
+          return {data: []};
+        }
+        if (
+          String(url).startsWith('api/teams/') &&
+          String(url).endsWith('/permissiongroups')
+        ) {
+          return {data: [{name: 'group-a'}]};
+        }
+        if (String(url).includes('api/permissiongroups?filter')) {
+          return {data: []};
+        }
+        return {data: []};
+      });
       jest.spyOn(portal.request, 'post').mockResolvedValue({
         status: 200,
         data: {id: 'tid', name: 'cli-team'},
@@ -930,10 +952,21 @@ describe('Portal', () => {
         },
         mf,
       );
-      jest
-        .spyOn(portal.request, 'get')
-        .mockResolvedValueOnce({data: []})
-        .mockResolvedValueOnce({data: []});
+      jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+        if (url === 'api/teams') {
+          return {data: []};
+        }
+        if (
+          String(url).startsWith('api/teams/') &&
+          String(url).endsWith('/permissiongroups')
+        ) {
+          return {data: []};
+        }
+        if (String(url).includes('api/permissiongroups?filter')) {
+          return {data: []};
+        }
+        return {data: []};
+      });
       jest
         .spyOn(portal.request, 'post')
         .mockResolvedValueOnce({
