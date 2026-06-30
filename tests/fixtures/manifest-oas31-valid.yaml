@@ -1,0 +1,3 @@
+products:
+  - name: api-product-oas31
+    openapi: spec-oas31-valid.yaml

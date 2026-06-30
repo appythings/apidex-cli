@@ -53,10 +53,42 @@ describe('formatRequestError', () => {
         message: 'socket hang up',
       }),
     ).toBe('socket hang up');
-
   });
 
+  it('network error includes err.code when present', () => {
+    expect(
+      formatRequestError({
+        request: {},
+        message: 'timeout',
+        code: 'ETIMEDOUT',
+      }),
+    ).toBe('timeout (code ETIMEDOUT)');
+  });
 
+  it('defaults HTTP method to GET when config.method is missing', () => {
+    const err = {
+      response: {status: 404, statusText: 'Not Found', data: 'missing'},
+      config: {baseURL: 'https://portal.test', url: '/api/x'},
+    };
+    expect(formatRequestError(err)).toContain('GET https://portal.test/api/x');
+  });
+
+  it('handles HTTP errors when config is absent', () => {
+    const err = {
+      response: {status: 502, statusText: 'Bad Gateway', data: 'x'},
+    };
+    expect(formatRequestError(err)).toContain('HTTP 502');
+    expect(formatRequestError(err)).toContain('GET');
+  });
+
+  it('uses fallback message for network errors without string message', () => {
+    expect(
+      formatRequestError({
+        request: {},
+        message: 123,
+      }),
+    ).toBe('No HTTP response received');
+  });
 
   it('handles plain Error', () => {
     expect(formatRequestError(new Error('oops'))).toBe('oops');

@@ -1,6 +1,8 @@
 # apidex-cli
 Commandline tool to use the management APIs of Apidex
 
+Supports **OpenAPI 3.0.x and 3.1.x** (including JSON Schema 2020-12 features). Specs are validated locally before upload and again by the Apidex backend. Requires **Node.js >= 18**.
+
 ## Installation
 ```npm i -g @appythings/apidex-cli```
 
@@ -38,7 +40,7 @@ Run:
 ```
 apidex-cli upload-spec [options] <manifest>
 
-uploads an openapi spec to apidex
+uploads an openapi spec to apidex (OpenAPI 3.0.x or 3.1.x)
 
 Options:
   --environment <environment>    add the environment to deploy this to
@@ -81,10 +83,28 @@ Options:
 npm test
 ```
 
-Coverage thresholds are enforced in `jest.config.js`: high bar for `src/lib/formatAxiosError.js`, aggregate floors for commands and `portal.js` (~80%+ — increase over time toward 95%).
+Coverage thresholds are enforced in `jest.config.js`: 90% global minimum, with higher bars for `formatAxiosError.js` and `portal.js`.
 
 ### Manual integration verification
 
 1. Use a throwaway manifest with `backendTeams` and a `backendTeam` on one product; run `apidex-cli upload-spec …`.
 2. Confirm with the Apidex API (`GET /api/teams`, or your tenant’s admin tools) that the team exists as `teamType: backend` and the product assignment matches.
 3. **Cleanup**: call assign with `{ "backendTeamId": null }` (or manifest `backendTeam: ~`), then `DELETE /api/teams/{id}` for the scratch team.
+
+### OpenAPI version notes
+
+- Supported: **OpenAPI 3.0.x** and **3.1.x** (validated with `@apidevtools/swagger-parser@12.1.0`, matching the backend).
+- In YAML manifests/specs, quote version fields: `openapi: "3.1.0"` and `info.version: "1.0.0"` (unquoted `openapi: 3.1` is parsed as a number and rejected).
+- Paths-less / webhooks-only 3.1 documents are not supported by all portal features; include `paths` for REST APIs.
+- See [CHANGELOG.md](./CHANGELOG.md) for release details.
+
+### Publishing (maintainers)
+
+After merging to the release branch, from the repo root:
+
+```bash
+npm test
+npm publish --access public
+```
+
+Run a staging `upload-spec` against a non-prod backend with a 3.1 fixture before publishing (see plan mitigations).

@@ -64,9 +64,22 @@ describe('upload-markdown runner', () => {
     expect(exitCode).toBe(1);
 
     expect(String(console.log.mock.calls[0][0])).toContain('HTTP 500');
-
-
   });
 
+  it('uses default logError and exit on failure when deps omitted', async () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    const portal = {
+      pushMarkdown: jest.fn().mockRejectedValue(new Error('markdown boom')),
+    };
 
+    await runUploadMarkdownCli(portal, Buffer.from('x'));
+
+    expect(
+      logSpy.mock.calls.some(c => String(c[0]).includes('markdown boom')),
+    ).toBe(true);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    logSpy.mockRestore();
+    exitSpy.mockRestore();
+  });
 });
