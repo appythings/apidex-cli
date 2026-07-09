@@ -5,6 +5,7 @@ module.exports = {
   collectCoverageFrom: [
     '<rootDir>/src/index.js',
     '<rootDir>/src/lib/formatAxiosError.js',
+    '<rootDir>/src/lib/openapiValidator.js',
     '<rootDir>/src/lib/jwt.js',
     '<rootDir>/src/commands/**/*.js',
     '<rootDir>/src/devportal/portal.js',

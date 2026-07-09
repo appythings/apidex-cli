@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.2.0
+
+### Added
+- OpenAPI **3.2.x** support via `@scalar/openapi-parser`.
+- Automated tests for OAS 3.2 validation.
+
+### Changed
+- Replaced `@apidevtools/swagger-parser` with `@scalar/openapi-parser`.
+- Requires **Node.js >= 22**.
+
 ## 1.1.0
 
 ### Added

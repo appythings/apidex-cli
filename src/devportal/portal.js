@@ -1,6 +1,6 @@
 const axios = require('axios');
 const qs = require('qs');
-const SwaggerParser = require('@apidevtools/swagger-parser');
+const {validateOpenApiFile} = require('../lib/openapiValidator');
 const yaml = require('js-yaml');
 const fs = require('fs-extra');
 const FormData = require('form-data');
@@ -133,7 +133,7 @@ class Portal {
           `Uploading ${product.openapi} for product: ${product.name}`,
         );
         const parsedSwagger = await this.readSwaggerFile(product.openapi);
-        await SwaggerParser.validate(product.openapi);
+        await validateOpenApiFile(product.openapi);
         if (!this.config.token) {
           await this.login();
         }
@@ -165,7 +165,7 @@ class Portal {
       this.categories.map(async category => {
         console.log(`Uploading ${category.name}`);
         const parsedSwagger = await this.readSwaggerFile(category.openapi);
-        await SwaggerParser.validate(category.openapi);
+        await validateOpenApiFile(category.openapi);
         await this.login();
         await this.request.post(`api/specs`, {
           environmentId: this.config.environment,
@@ -184,7 +184,7 @@ class Portal {
                 return;
               }
               parsedSwagger = await this.readSwaggerFile(product.openapi);
-              await SwaggerParser.validate(product.openapi);
+              await validateOpenApiFile(product.openapi);
             }
             return this.request
               .post(

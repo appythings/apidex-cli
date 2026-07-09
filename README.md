@@ -93,7 +93,7 @@ Coverage thresholds are enforced in `jest.config.js`: 90% global minimum, with h
 
 ### OpenAPI version notes
 
-- Supported: **OpenAPI 3.0.x** and **3.1.x** (validated with `@apidevtools/swagger-parser@12.1.0`, matching the backend).
+- Supported: **OpenAPI 3.0.x**, **3.1.x**, and **3.2.x** (validated with `@scalar/openapi-parser`, matching the backend).
 - In YAML manifests/specs, quote version fields: `openapi: "3.1.0"` and `info.version: "1.0.0"` (unquoted `openapi: 3.1` is parsed as a number and rejected).
 - Paths-less / webhooks-only 3.1 documents are not supported by all portal features; include `paths` for REST APIs.
 - See [CHANGELOG.md](./CHANGELOG.md) for release details.
