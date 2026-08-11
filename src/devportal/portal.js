@@ -6,6 +6,7 @@ const fs = require('fs-extra');
 const FormData = require('form-data');
 const jwt = require('../lib/jwt');
 const {formatRequestError} = require('../lib/formatAxiosError');
+const {loadOverlays} = require('../lib/overlays');
 
 class Portal {
   /** @param {Record<string, unknown>} yml */
@@ -134,6 +135,14 @@ class Portal {
         );
         const parsedSwagger = await this.readSwaggerFile(product.openapi);
         await SwaggerParser.validate(product.openapi);
+        const overlays = loadOverlays(product);
+        if (overlays.length > 0) {
+          console.log(
+            `Including ${overlays.length} translation overlay(s) for ${product.name}: ${overlays
+              .map(entry => entry.locale)
+              .join(', ')}`,
+          );
+        }
         if (!this.config.token) {
           await this.login();
         }
@@ -147,6 +156,7 @@ class Portal {
               inheritSpec: false,
               permissiongroup: product.permissionGroup,
               latest: true,
+              overlays,
             },
           )
           .catch(e => {
@@ -166,18 +176,38 @@ class Portal {
         console.log(`Uploading ${category.name}`);
         const parsedSwagger = await this.readSwaggerFile(category.openapi);
         await SwaggerParser.validate(category.openapi);
+        const categoryOverlays = loadOverlays(category);
         await this.login();
-        await this.request.post(`api/specs`, {
+        const createdCategorySpec = await this.request.post(`api/specs`, {
           environmentId: this.config.environment,
           categoryId: category.name,
           spec: parsedSwagger,
           latest: true,
         });
 
+        // `POST /api/specs` is the generated CRUD route and does not accept
+        // overlays inline, so category translations go up separately.
+        if (categoryOverlays.length > 0) {
+          const categorySpecId = createdCategorySpec?.data?.id;
+          if (categorySpecId) {
+            console.log(
+              `Uploading ${categoryOverlays.length} translation overlay(s) for category ${category.name}`,
+            );
+            await this.request.put(`api/specs/${categorySpecId}/overlays`, {
+              overlays: categoryOverlays,
+            });
+          } else {
+            console.log(
+              `Skipping overlays for category ${category.name}: no spec id returned`,
+            );
+          }
+        }
+
         return Promise.all(
           category.products.map(async product => {
             console.log(`Uploading ${product.name}`);
             let parsedSwagger;
+            let overlays = [];
             if (product.inheritSpec === false) {
               if (!product.openapi) {
                 console.log('You have to specify spec');
@@ -185,6 +215,16 @@ class Portal {
               }
               parsedSwagger = await this.readSwaggerFile(product.openapi);
               await SwaggerParser.validate(product.openapi);
+              // Products that inherit the category spec are translated by the
+              // category's overlays, so only own-spec products carry their own.
+              overlays = loadOverlays(product);
+            } else if (
+              Array.isArray(product.overlays) &&
+              product.overlays.length > 0
+            ) {
+              console.log(
+                `Ignoring overlays for ${product.name}: it inherits the category spec, so declare the overlays on category "${category.name}" instead`,
+              );
             }
             return this.request
               .post(
@@ -197,6 +237,7 @@ class Portal {
                   inheritSpec: product.inheritSpec,
                   permissiongroup: product.permissionGroup,
                   latest: true,
+                  overlays,
                 },
               )
               .catch(e => {

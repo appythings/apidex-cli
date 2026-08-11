@@ -6,6 +6,7 @@ module.exports = {
     '<rootDir>/src/index.js',
     '<rootDir>/src/lib/formatAxiosError.js',
     '<rootDir>/src/lib/jwt.js',
+    '<rootDir>/src/lib/overlays.js',
     '<rootDir>/src/commands/**/*.js',
     '<rootDir>/src/devportal/portal.js',
   ],
@@ -29,6 +30,12 @@ module.exports = {
       statements: 95,
     },
     './src/lib/jwt.js': {
+      branches: 90,
+      functions: 100,
+      lines: 90,
+      statements: 90,
+    },
+    './src/lib/overlays.js': {
       branches: 90,
       functions: 100,
       lines: 90,
