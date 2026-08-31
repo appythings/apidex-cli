@@ -3,6 +3,7 @@ const {version} = require('../package.json');
 
 const mockRunUploadSpecCli = jest.fn().mockResolvedValue(undefined);
 const mockRunUploadMarkdownCli = jest.fn().mockResolvedValue(undefined);
+const mockRunValidateCli = jest.fn().mockResolvedValue(undefined);
 const mockArchive = {
   directory: jest.fn(),
   finalize: jest.fn(),
@@ -14,6 +15,9 @@ jest.mock('../src/commands/upload-spec', () => ({
 }));
 jest.mock('../src/commands/upload-markdown', () => ({
   runUploadMarkdownCli: (...args) => mockRunUploadMarkdownCli(...args),
+}));
+jest.mock('../src/commands/validate', () => ({
+  runValidateCli: (...args) => mockRunValidateCli(...args),
 }));
 jest.mock('archiver', () => jest.fn(() => mockArchive));
 jest.mock('stream-to-promise', () =>
@@ -46,6 +50,7 @@ describe('CLI index', () => {
     jest.clearAllMocks();
     mockRunUploadSpecCli.mockResolvedValue(undefined);
     mockRunUploadMarkdownCli.mockResolvedValue(undefined);
+    mockRunValidateCli.mockResolvedValue(undefined);
     Portal.mockImplementation(() => ({}));
   });
 
@@ -178,6 +183,21 @@ describe('CLI index', () => {
       }),
       manifestPath,
     );
+  });
+
+  it('validate does not construct Portal and delegates to runValidateCli', async () => {
+    await parseCli(
+      'validate',
+      manifestPath,
+      '--require-locales',
+      'nl-NL,de-DE',
+    );
+
+    expect(Portal).not.toHaveBeenCalled();
+    expect(mockRunValidateCli).toHaveBeenCalledWith({
+      manifestPath,
+      requireLocales: 'nl-NL,de-DE',
+    });
   });
 
   it('prints package version for -v', () => {

@@ -1,0 +1,1 @@
+{"openapi":"3.0.2","info":{"title":"json spec","version":"1.0.0"},"paths":{"/pets":{"get":{"summary":"List pets","responses":{"200":{"description":"ok"}}}}}}

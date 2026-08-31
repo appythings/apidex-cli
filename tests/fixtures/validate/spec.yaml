@@ -1,0 +1,17 @@
+openapi: "3.0.2"
+info:
+  title: Overlay validate pet store
+  version: "1.0.0"
+paths:
+  /pets:
+    get:
+      summary: List pets
+      responses:
+        "200":
+          description: ok
+  /internal:
+    get:
+      summary: Internal only
+      responses:
+        "200":
+          description: ok

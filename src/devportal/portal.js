@@ -124,6 +124,90 @@ class Portal {
     throw new Error('Openapi spec must be either yaml/yml or json');
   }
 
+  overlayDropError(name, locales) {
+    return new Error(
+      `Refusing to upload ${name} without overlay files: the portal already has overlays for ${locales.join(', ')}. Declare overlays in the manifest or DELETE /api/specs/{id}/overlays. Use apidex-cli validate --require-locales in CI to catch this before upload.`,
+    );
+  }
+
+  async fetchOverlayLocalesForSpec(specId) {
+    if (!specId) return [];
+    try {
+      const response = await this.request.get(`api/specs/${specId}/overlays`);
+      const rows = Array.isArray(response.data) ? response.data : [];
+      return rows.map(row => row.locale).filter(Boolean);
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  async fetchLatestProductSpecId(productName) {
+    try {
+      const response = await this.request.get(
+        `api/environments/${this.config.environment}/apiproducts/${productName}/specs`,
+      );
+      const specs = Array.isArray(response.data) ? response.data : [];
+      const latest = specs.find(spec => spec.latest) || specs[0];
+      return latest && latest.id;
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  async fetchLatestCategorySpecId(categoryId) {
+    try {
+      const filter = JSON.stringify({
+        where: {
+          and: [
+            {categoryId},
+            {environmentId: this.config.environment},
+          ],
+        },
+      });
+      const response = await this.request.get(
+        `api/specs?filter=${encodeURIComponent(filter)}`,
+      );
+      const specs = Array.isArray(response.data) ? response.data : [];
+      const categorySpecs = specs.filter(spec => !spec.productId);
+      const latest =
+        categorySpecs.find(spec => spec.latest) || categorySpecs[0];
+      return latest && latest.id;
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * New spec versions do not copy overlays. Uploading without overlay files
+   * while the portal already has some would silently drop them from the new
+   * version — fail instead.
+   */
+  async assertOverlaysNotDropped(name, overlays, options = {}) {
+    if (Array.isArray(overlays) && overlays.length > 0) {
+      return;
+    }
+    let specId = options.specId;
+    if (!specId && options.categoryId) {
+      specId = await this.fetchLatestCategorySpecId(options.categoryId);
+    }
+    if (!specId) {
+      specId = await this.fetchLatestProductSpecId(name);
+    }
+    const locales = await this.fetchOverlayLocalesForSpec(specId);
+    if (locales.length > 0) {
+      throw this.overlayDropError(name, locales);
+    }
+  }
+
   async pushSwagger() {
     if (!this.swaggerFiles) {
       return;
@@ -138,7 +222,7 @@ class Portal {
         const overlays = loadOverlays(product);
         if (overlays.length > 0) {
           console.log(
-            `Including ${overlays.length} translation overlay(s) for ${product.name}: ${overlays
+            `Including ${overlays.length} overlay(s) for ${product.name}: ${overlays
               .map(entry => entry.locale)
               .join(', ')}`,
           );
@@ -146,6 +230,7 @@ class Portal {
         if (!this.config.token) {
           await this.login();
         }
+        await this.assertOverlaysNotDropped(product.name, overlays);
         return this.request
           .post(
             `api/environments/${this.config.environment}/apiproducts/${
@@ -178,6 +263,11 @@ class Portal {
         await SwaggerParser.validate(category.openapi);
         const categoryOverlays = loadOverlays(category);
         await this.login();
+        await this.assertOverlaysNotDropped(
+          category.name,
+          categoryOverlays,
+          {categoryId: category.name},
+        );
         const createdCategorySpec = await this.request.post(`api/specs`, {
           environmentId: this.config.environment,
           categoryId: category.name,
@@ -186,20 +276,26 @@ class Portal {
         });
 
         // `POST /api/specs` is the generated CRUD route and does not accept
-        // overlays inline, so category translations go up separately.
+        // overlays inline, so category overlays go up separately.
         if (categoryOverlays.length > 0) {
           const categorySpecId = createdCategorySpec?.data?.id;
-          if (categorySpecId) {
-            console.log(
-              `Uploading ${categoryOverlays.length} translation overlay(s) for category ${category.name}`,
+          if (!categorySpecId) {
+            throw new Error(
+              `Cannot upload overlays for category ${category.name}: no spec id returned`,
             );
+          }
+          console.log(
+            `Uploading ${categoryOverlays.length} overlay(s) for category ${category.name}`,
+          );
+          try {
             await this.request.put(`api/specs/${categorySpecId}/overlays`, {
               overlays: categoryOverlays,
             });
-          } else {
+          } catch (error) {
             console.log(
-              `Skipping overlays for category ${category.name}: no spec id returned`,
+              `Failed to upload overlays for category ${category.name}`,
             );
+            throw error;
           }
         }
 
@@ -215,9 +311,13 @@ class Portal {
               }
               parsedSwagger = await this.readSwaggerFile(product.openapi);
               await SwaggerParser.validate(product.openapi);
-              // Products that inherit the category spec are translated by the
-              // category's overlays, so only own-spec products carry their own.
+              // Products that inherit the category spec use the category's
+              // overlays, so only own-spec products carry their own.
               overlays = loadOverlays(product);
+              if (!this.config.token) {
+                await this.login();
+              }
+              await this.assertOverlaysNotDropped(product.name, overlays);
             } else if (
               Array.isArray(product.overlays) &&
               product.overlays.length > 0

@@ -13,13 +13,13 @@ products:
   - name: ID-of-the-API # For SAP and Apigee this is the name of the product, not the displayName
     openapi: swagger.json # link to an openapi spec in yaml or json format
     permissionGroup: owners # Permission group that is allowed access to this product (optional)
-    overlays: # optional: per-locale translation overlays, see "Localized spec content"
+    overlays: # optional: per-locale OpenAPI Overlay 1.x documents, see "Per-locale OpenAPI overlays"
       - locale: nl-NL
         path: overlays/nl-NL.yaml
 categories: # You can also bundle multiple products in a category
   - name: category1 # Choose a unique name for the category
     openapi: swagger.json # link to an openapi spec in yaml or json format
-    overlays: # optional: translations for the category spec (and every product inheriting it)
+    overlays: # optional: Overlay 1.x for the category spec (and every product inheriting it)
       - locale: nl-NL
         path: overlays/category1-nl-NL.yaml
     products:
@@ -60,6 +60,18 @@ Options:
   --token <token>                provide a token instead
   -h, --help                     display help for command
 ```
+
+```
+apidex-cli validate [manifest] [--require-locales <list>]
+
+validate OpenAPI overlay files in a spec manifest (no API calls, no tokens)
+
+Options:
+  --require-locales <list>  comma-separated locales every non-inherited spec must declare overlays for
+  -h, --help                display help for command
+```
+
+Same binary as `upload-spec`. Spec-repo CI can run this in a PR job with only the CLI and the manifest. A settings file that supplies a default manifest path and required locales is coming later; until then pass the manifest path (and `--require-locales` when you want that gate). Example: `examples/overlay-demo/`.
 
 ```
 apidex-cli upload-markdown [options] <directory>
@@ -104,13 +116,14 @@ Coverage thresholds are enforced in `jest.config.js`: 90% global minimum, with h
 - Paths-less / webhooks-only 3.1 documents are not supported by all portal features; include `paths` for REST APIs.
 - See [CHANGELOG.md](./CHANGELOG.md) for release details.
 
-### Localized spec content (translations)
+### Per-locale OpenAPI overlays
 
-The developer portal can display OpenAPI spec content (titles, descriptions,
-summaries) in the visitor's selected UI language. Translation is a
-**presentation concern**: the spec you upload stays canonical, and each
-translation ships as a separate [OpenAPI Overlay](https://spec.openapis.org/overlay/v1.1.0.html)
-document. The portal merges the overlay into the spec when it serves it.
+The portal applies a full [OpenAPI Overlay 1.x](https://spec.openapis.org/overlay/v1.1.0.html)
+document for the visitor's UI locale (`?locale=nl-NL`). The spec you upload stays
+canonical in Mongo; each overlay is a JSONPath patch (`update` and/or `remove`)
+that can change copy, hide paths, swap `servers`, or add `x-*` fields. The
+downloaded spec **is** the merged overlay for that locale, including structural
+changes, so only ship actions you intend consumers to see.
 
 Declare one overlay per locale on a product or a category:
 
@@ -133,40 +146,36 @@ products:
   relative to where you run the CLI.
 - One entry per locale — a duplicate locale fails the upload.
 
+Run `apidex-cli validate apis.yaml` (and optionally `--require-locales nl-NL,de-DE`)
+before `upload-spec` so unmatched JSONPath targets and missing files fail in CI
+instead of at upload time.
+
 #### Writing an overlay
 
-An overlay is a small document of `actions`. Each action has a `target`
-([JSONPath](https://datatracker.ietf.org/doc/html/rfc9535)) selecting a node in
-the spec, and an `update` object merged into that node:
+Each action has a `target` ([JSONPath](https://datatracker.ietf.org/doc/html/rfc9535))
+and either `update` or `remove: true`:
 
 ```yaml
 overlay: 1.1.0
 info:
-  title: Dutch translation for Pet Store API
+  title: Dutch overlay
   version: 1.0.0
 actions:
   - target: $.info
     update:
-      description: Nederlandse beschrijving.
-  - target: $.paths['/pets'].get
-    update:
-      summary: Huisdieren weergeven
-      description: Geeft alle huisdieren terug.
+      description: Nederlandse overlay.
+  - target: $.paths['/internal']
+    remove: true
 ```
 
-Translate only presentation fields — `title`, `description`, `summary`, and tag
-descriptions. Do **not** use overlays to change schema definitions, paths,
-operation ids, or anything a consumer generates code from: the portal would then
-show an API that does not match the one you published.
-
-The CLI validates every overlay before uploading, so mistakes surface locally:
-the `overlay` version must be `1.x.y`, `actions` must be non-empty, and each
-action needs a `target` plus either an `update` or `remove: true`.
+Upload still checks Overlay shape (`overlay` version `1.x.y`, non-empty `actions`,
+each action a `target` plus `update` and/or `remove`). `validate` also fails when
+a `target` matches no node in the local spec.
 
 #### Categories and inherited specs
 
 Overlays attach to a **spec**, not to a product name. A product with
-`inheritSpec: true` shows the category's spec, so its translations belong on the
+`inheritSpec: true` shows the category's spec, so its overlays belong on the
 category:
 
 ```yaml
@@ -178,7 +187,7 @@ categories:
         path: overlays/category-nl-NL.yaml
     products:
       - name: pets-public
-        inheritSpec: true # translated by the category overlay above
+        inheritSpec: true # uses the category overlay above
       - name: pets-internal
         inheritSpec: false
         openapi: internal.yml
@@ -197,33 +206,25 @@ because there is no product-owned spec to apply them to.
 - Fallback is per request, not per field: an exact locale match wins, then the
   primary subtag (`nl-NL` → `nl`), then the canonical spec. A locale with no
   overlay returns the canonical spec.
-- Fields your overlay does not target keep their canonical values, so a partial
-  translation never renders blank.
-- A broken overlay never breaks a spec read — the portal logs it and serves the
-  canonical spec.
-- Unrelated vendor extensions (`x-request-id`, `x-correlation-id`) and `$ref`
-  pointers are untouched.
-- **Downloads and exports follow the portal language**, so a consumer reading
-  the portal in Dutch downloads the Dutch rendering. Because only presentation
-  fields are translated, the downloaded document is still a valid spec
-  describing the same API — which is exactly why overlays must not touch
-  schemas or operation ids. To fetch the canonical document, request it without
-  a `locale`.
+- Fields your overlay does not target keep their canonical values.
+- A broken overlay never breaks a spec **read** — the portal logs it and serves the
+  canonical spec. Overlay **writes** still surface errors.
+- **Downloads and exports follow the portal language**, including `remove` /
+  non-copy `update`. To fetch the canonical document, request it without a
+  `locale`.
 
-Overlays belong to a **spec version**. Uploading a new version carries up
-whatever your manifest declares at that moment, so keep the overlay files in step
-with the spec. Re-uploading an overlay for a locale replaces the previous one for
-that locale; dropping an entry from `overlays` does **not** delete the
-translation already stored. Remove it explicitly with
+Overlays belong to a **spec version** and are **not** copied on a version bump.
+`upload-spec` **fails** (exit 1) when the manifest entry has no overlay files and
+the portal already has overlays for that product or category spec. `--force` does
+not bypass this. First-time specs with no overlays succeed. `inheritSpec` products
+are exempt (overlays live on the category). Clear stored overlays with
 `DELETE /api/specs/{specId}/overlays`.
 
 #### A note on `x-{attribute}-{locale}`
 
-An earlier iteration embedded translations in the spec itself, as vendor
-extensions such as `x-description-nl-NL`. The portal no longer reads them. It
-never ran against real content, so there is nothing to migrate — such keys are
-now just ordinary vendor extensions and are stored and served untouched. Put new
-translations in overlay files as described above.
+An earlier iteration embedded copy in the spec itself, as vendor extensions such
+as `x-description-nl-NL`. The portal no longer reads them. Put new locale views
+in overlay files as described above.
 
 ### Publishing (maintainers)
 

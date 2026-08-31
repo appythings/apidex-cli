@@ -14,6 +14,10 @@ function newPortal(manifest) {
   );
 }
 
+function mockEmptyOverlayLookups(portal) {
+  jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+}
+
 describe('pushSwagger with overlays', () => {
   let origCwd;
   let logSpy;
@@ -71,11 +75,82 @@ describe('pushSwagger with overlays', () => {
   it('sends an empty overlay list when none are declared', async () => {
     const portal = newPortal('manifest-products-only.yaml');
     jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    mockEmptyOverlayLookups(portal);
 
     await portal.pushSwagger();
 
     const [, body] = portal.request.post.mock.calls[0];
     expect(body.overlays).toEqual([]);
+  });
+
+  it('treats a 404 product spec list as a first-time upload', async () => {
+    const portal = newPortal('manifest-products-only.yaml');
+    jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    const missing = new Error('not found');
+    missing.response = {status: 404};
+    jest.spyOn(portal.request, 'get').mockRejectedValue(missing);
+
+    await portal.pushSwagger();
+    expect(portal.request.post).toHaveBeenCalled();
+  });
+
+  it('rethrows product spec listing errors other than 404', async () => {
+    const portal = newPortal('manifest-products-only.yaml');
+    jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    const boom = new Error('specs down');
+    boom.response = {status: 500};
+    jest.spyOn(portal.request, 'get').mockRejectedValue(boom);
+
+    await expect(portal.pushSwagger()).rejects.toThrow('specs down');
+  });
+
+  it('refuses a new version that would drop existing overlays', async () => {
+    const portal = newPortal('manifest-products-only.yaml');
+    const postSpy = jest
+      .spyOn(portal.request, 'post')
+      .mockResolvedValue({data: {id: 's1'}});
+    jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+      if (String(url).includes('/overlays')) {
+        return {data: [{locale: 'nl-NL'}]};
+      }
+      return {data: [{id: 'old-spec', latest: true}]};
+    });
+
+    await expect(portal.pushSwagger()).rejects.toThrow(
+      /Refusing to upload api-product-1 without overlay files/,
+    );
+    expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  it('rethrows overlay listing errors other than 404', async () => {
+    const portal = newPortal('manifest-products-only.yaml');
+    jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    const boom = new Error('overlay store down');
+    boom.response = {status: 500};
+    jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+      if (String(url).includes('/overlays')) {
+        throw boom;
+      }
+      return {data: [{id: 'old-spec', latest: true}]};
+    });
+
+    await expect(portal.pushSwagger()).rejects.toThrow('overlay store down');
+  });
+
+  it('treats a 404 overlay listing as no existing overlays', async () => {
+    const portal = newPortal('manifest-products-only.yaml');
+    jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    const missing = new Error('not found');
+    missing.response = {status: 404};
+    jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+      if (String(url).includes('/overlays')) {
+        throw missing;
+      }
+      return {data: [{id: 'old-spec', latest: true}]};
+    });
+
+    await portal.pushSwagger();
+    expect(portal.request.post).toHaveBeenCalled();
   });
 
   it('fails before uploading when an overlay is invalid', async () => {
@@ -110,6 +185,30 @@ describe('pushSwagger with overlays', () => {
       'Unsupported overlay locale "it-IT"',
     );
     expect(portal.request.post).not.toHaveBeenCalled();
+  });
+
+  it('--force does not bypass the overlay-drop check', async () => {
+    const portal = new Portal(
+      {
+        hostname: 'https://portal.test',
+        environment: 'e1',
+        token: 'tok',
+        force: true,
+      },
+      path.join(fixtures, 'manifest-products-only.yaml'),
+    );
+    const postSpy = jest
+      .spyOn(portal.request, 'post')
+      .mockResolvedValue({data: {id: 's1'}});
+    jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+      if (String(url).includes('/overlays')) {
+        return {data: [{locale: 'de-DE'}]};
+      }
+      return {data: [{id: 'old-spec', latest: true}]};
+    });
+
+    await expect(portal.pushSwagger()).rejects.toThrow(/without overlay files/);
+    expect(postSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -199,24 +298,36 @@ describe('pushCategories with overlays', () => {
     ).toBe(true);
   });
 
-  it('skips category overlays when no spec id comes back', async () => {
+  it('fails when no spec id comes back for category overlays', async () => {
     const portal = newPortal('manifest-categories-overlays.yaml');
     portal.login = jest.fn();
+    mockEmptyOverlayLookups(portal);
     jest.spyOn(portal.request, 'post').mockResolvedValue({data: {}});
     const putSpy = jest.spyOn(portal.request, 'put').mockResolvedValue({});
 
-    await portal.pushCategories();
-
+    await expect(portal.pushCategories()).rejects.toThrow(
+      'Cannot upload overlays for category cat1: no spec id returned',
+    );
     expect(putSpy).not.toHaveBeenCalled();
-    const messages = console.log.mock.calls.map(args => String(args[0]));
-    expect(
-      messages.some(message => message.includes('no spec id returned')),
-    ).toBe(true);
+  });
+
+  it('fails the command when category overlay PUT rejects', async () => {
+    const portal = newPortal('manifest-categories-overlays.yaml');
+    portal.login = jest.fn();
+    mockEmptyOverlayLookups(portal);
+    jest
+      .spyOn(portal.request, 'post')
+      .mockResolvedValue({data: {id: 'cat-spec-1'}});
+    const putError = new Error('overlay put failed');
+    jest.spyOn(portal.request, 'put').mockRejectedValue(putError);
+
+    await expect(portal.pushCategories()).rejects.toThrow('overlay put failed');
   });
 
   it('does not call the overlay endpoint for a category without overlays', async () => {
     const portal = newPortal('manifest-categories-unassign.yaml');
     portal.login = jest.fn();
+    mockEmptyOverlayLookups(portal);
     jest
       .spyOn(portal.request, 'post')
       .mockResolvedValue({data: {id: 'cat-spec-1'}});
@@ -225,5 +336,49 @@ describe('pushCategories with overlays', () => {
     await portal.pushCategories();
 
     expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  it('refuses a category upload that would drop existing overlays', async () => {
+    const portal = newPortal('manifest-categories-unassign.yaml');
+    portal.login = jest.fn();
+    const postSpy = jest
+      .spyOn(portal.request, 'post')
+      .mockResolvedValue({data: {id: 'cat-spec-1'}});
+    jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+      if (String(url).includes('/overlays')) {
+        return {data: [{locale: 'nl-NL'}]};
+      }
+      return {data: [{id: 'old-cat', latest: true}]};
+    });
+
+    await expect(portal.pushCategories()).rejects.toThrow(
+      /Refusing to upload cat1 without overlay files/,
+    );
+    expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  it('treats a 404 category spec list as a first-time upload', async () => {
+    const portal = newPortal('manifest-categories-unassign.yaml');
+    portal.login = jest.fn();
+    const missing = new Error('not found');
+    missing.response = {status: 404};
+    jest.spyOn(portal.request, 'get').mockRejectedValue(missing);
+    jest
+      .spyOn(portal.request, 'post')
+      .mockResolvedValue({data: {id: 'cat-spec-1'}});
+
+    await portal.pushCategories();
+    expect(portal.request.post).toHaveBeenCalled();
+  });
+
+  it('rethrows category spec listing errors other than 404', async () => {
+    const portal = newPortal('manifest-categories-unassign.yaml');
+    portal.login = jest.fn();
+    const boom = new Error('specs down');
+    boom.response = {status: 500};
+    jest.spyOn(portal.request, 'get').mockRejectedValue(boom);
+    jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 'x'}});
+
+    await expect(portal.pushCategories()).rejects.toThrow('specs down');
   });
 });

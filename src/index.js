@@ -6,6 +6,7 @@ const archiver = require('archiver');
 const streamToPromise = require('stream-to-promise');
 const {runUploadSpecCli} = require('./commands/upload-spec');
 const {runUploadMarkdownCli} = require('./commands/upload-markdown');
+const {runValidateCli} = require('./commands/validate');
 
 function createProgram() {
   const cli = program.createCommand();
@@ -81,6 +82,22 @@ function createProgram() {
         console.log(e.message);
         process.exit(1);
       }
+    });
+
+  cli
+    .command('validate [manifest]')
+    .option(
+      '--require-locales <list>',
+      'comma-separated locales every non-inherited spec must declare overlays for',
+    )
+    .description(
+      'validate OpenAPI overlay files in a spec manifest (no API calls)',
+    )
+    .action(async (manifest, command) => {
+      await runValidateCli({
+        manifestPath: manifest,
+        requireLocales: command.requireLocales,
+      });
     });
 
   cli

@@ -1,0 +1,9 @@
+# Sample spec-repo manifest. Run from this folder:
+#   apidex-cli validate apis.yaml
+#   apidex-cli validate apis.yaml --require-locales nl-NL
+products:
+  - name: overlay-demo
+    openapi: spec.yaml
+    overlays:
+      - locale: nl-NL
+        path: overlays/nl-NL.yaml

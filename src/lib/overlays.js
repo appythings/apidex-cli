@@ -2,7 +2,7 @@ const yaml = require('js-yaml');
 const fs = require('fs-extra');
 
 /**
- * Portal UI locales that can carry a spec translation overlay.
+ * Portal UI locales that can carry a spec overlay.
  * Must stay in sync with SUPPORTED_SPEC_LOCALES in the portal backend.
  */
 const SUPPORTED_LOCALES = [

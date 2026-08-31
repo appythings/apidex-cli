@@ -1,0 +1,6 @@
+products:
+  - name: pet-store
+    openapi: spec.yaml
+    overlays:
+      - locale: it-IT
+        path: overlays/nl-NL.yaml

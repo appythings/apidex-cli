@@ -9,6 +9,7 @@ module.exports = {
     '<rootDir>/src/lib/overlays.js',
     '<rootDir>/src/commands/**/*.js',
     '<rootDir>/src/devportal/portal.js',
+    '<rootDir>/src/validate/**/*.js',
   ],
   coverageThreshold: {
     global: {
@@ -46,6 +47,18 @@ module.exports = {
       functions: 90,
       lines: 90,
       statements: 90,
+    },
+    './src/validate/**/*.js': {
+      branches: 90,
+      functions: 100,
+      lines: 95,
+      statements: 95,
+    },
+    './src/commands/validate.js': {
+      branches: 90,
+      functions: 100,
+      lines: 95,
+      statements: 95,
     },
   },
 };

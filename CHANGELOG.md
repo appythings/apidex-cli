@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `apidex-cli validate [manifest] [--require-locales …]` — local Overlay 1.x checks with no API calls. Jest coverage now includes `src/validate/**`.
+- Upload fails when a new spec version would ship without overlay files while the portal already has overlays for that spec (`--force` does not bypass).
+
+### Changed
+- Overlay wording is Overlay 1.x (including `remove` and non-copy `update`), not copy-only translations.
+
 ## 1.1.0
 
 ### Added

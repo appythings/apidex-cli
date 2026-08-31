@@ -529,6 +529,7 @@ describe('Portal', () => {
         mf,
       );
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushSwagger();
 
@@ -555,6 +556,7 @@ describe('Portal', () => {
 
       const err = new Error('network');
       jest.spyOn(portal.request, 'post').mockRejectedValue(err);
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await expect(portal.pushSwagger()).rejects.toThrow('network');
       expect(
@@ -650,6 +652,7 @@ describe('Portal', () => {
         yamlPath,
       );
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushCategories();
       expect(portal.request.post).toHaveBeenCalled();
@@ -674,6 +677,7 @@ describe('Portal', () => {
         yamlPath,
       );
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushCategories();
 
@@ -699,6 +703,7 @@ describe('Portal', () => {
       );
       portal.login = jest.fn().mockResolvedValue();
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushCategories();
 
@@ -727,6 +732,7 @@ describe('Portal', () => {
         .spyOn(portal.request, 'post')
         .mockResolvedValueOnce({})
         .mockRejectedValueOnce(new Error('nested upload fail'));
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await expect(portal.pushCategories()).rejects.toThrow(
         'nested upload fail',
@@ -1054,6 +1060,7 @@ describe('Portal', () => {
         portal.request.defaults.headers.common.Authorization = 'Bearer x';
       });
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushSwagger();
 

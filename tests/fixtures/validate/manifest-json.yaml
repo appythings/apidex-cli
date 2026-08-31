@@ -1,0 +1,6 @@
+products:
+  - name: json-product
+    openapi: spec.json
+    overlays:
+      - locale: en-GB
+        path: overlays/en-GB.json
