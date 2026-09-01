@@ -1,7 +1,7 @@
 const {runValidate} = require('../validate');
 
 /**
- * @param {{manifestPath?: string, requireLocales?: string, host?: string, environment?: string, token?: string}} argv
+ * @param {{manifestPath?: string, requireLocales?: string, host?: string, environment?: string, token?: string, clientId?: string, clientSecret?: string, aud?: string, scope?: string, tokenUrl?: string}} argv
  * @param {{ log?: (msg: string) => void, exit?: (code: number) => void }} [deps]
  */
 async function runValidateCli(argv, deps = {}) {

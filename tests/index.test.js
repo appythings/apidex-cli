@@ -211,6 +211,41 @@ describe('CLI index', () => {
     );
   });
 
+  it('validate forwards client credential flags', async () => {
+    await parseCli(
+      'validate',
+      manifestPath,
+      '--host',
+      'http://127.0.0.1:3000',
+      '--environment',
+      '123456',
+      '--clientId',
+      'cid',
+      '--clientSecret',
+      'secret',
+      '--scope',
+      'scope-val',
+      '--tokenUrl',
+      'https://token.test/oauth',
+      '--aud',
+      'aud-val',
+    );
+
+    expect(Portal).not.toHaveBeenCalled();
+    expect(mockRunValidateCli).toHaveBeenCalledWith(
+      expect.objectContaining({
+        manifestPath,
+        host: 'http://127.0.0.1:3000',
+        environment: '123456',
+        clientId: 'cid',
+        clientSecret: 'secret',
+        scope: 'scope-val',
+        tokenUrl: 'https://token.test/oauth',
+        aud: 'aud-val',
+      }),
+    );
+  });
+
   it('prints package version for -v', () => {
     const writeSpy = jest
       .spyOn(process.stdout, 'write')

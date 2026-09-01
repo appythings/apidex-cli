@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Added
-- `apidex-cli validate` always checks that manifest API products exist in the portal (name or id, not displayName). Needs `--host`, `--environment`, and `--token`. Overlay checks still run if the portal call fails.
+- `apidex-cli validate` always checks that manifest API products exist in the portal (name or id, not displayName). Needs `--host`, `--environment`, and `--token` or the same client credentials as `upload-spec`. Overlay checks still run if the portal call fails.
 - Upload fails when a new spec version would ship without overlay files while the portal already has overlays for that spec (`--force` does not bypass).
 
 ### Changed

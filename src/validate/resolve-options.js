@@ -2,9 +2,13 @@
  * Resolves validate options from CLI argv.
  * A spec-repo settings file will supply defaults later; flags always win.
  *
- * @param {{manifestPath?: string, requireLocales?: string, host?: string, environment?: string, token?: string}} argv
- * @returns {{manifestPath: string, requireLocales: string[], host: string, environment: string, token: string}}
+ * @param {{manifestPath?: string, requireLocales?: string, host?: string, environment?: string, token?: string, clientId?: string, clientSecret?: string, aud?: string, scope?: string, tokenUrl?: string}} argv
+ * @returns {{manifestPath: string, requireLocales: string[], host: string, environment: string, token: string, clientId: string, clientSecret: string, aud: string, scope: string, tokenUrl: string}}
  */
+function trimFlag(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function resolveValidateOptions(argv = {}) {
   const manifestPath =
     typeof argv.manifestPath === 'string' ? argv.manifestPath.trim() : '';
@@ -23,14 +27,23 @@ function resolveValidateOptions(argv = {}) {
       .filter(Boolean);
   }
 
-  const host = typeof argv.host === 'string' ? argv.host.trim() : '';
-  const environment =
-    typeof argv.environment === 'string' ? argv.environment.trim() : '';
-  const token = typeof argv.token === 'string' ? argv.token.trim() : '';
+  const host = trimFlag(argv.host);
+  const environment = trimFlag(argv.environment);
+  const token = trimFlag(argv.token);
+  const clientId = trimFlag(argv.clientId);
+  const clientSecret = trimFlag(argv.clientSecret);
+  const aud = trimFlag(argv.aud);
+  const scope = trimFlag(argv.scope);
+  const tokenUrl = trimFlag(argv.tokenUrl);
 
-  if (!host || !environment || !token) {
+  if (!host || !environment) {
     throw new Error(
-      'validate requires --host, --environment, and --token (or APIDEX_HOST / APIDEX_ENVIRONMENT / APIDEX_TOKEN)',
+      'validate requires --host and --environment (or APIDEX_HOST / APIDEX_ENVIRONMENT)',
+    );
+  }
+  if (!token && !(clientId && tokenUrl)) {
+    throw new Error(
+      'validate requires --token or client credentials (--clientId and --tokenUrl; also --clientSecret unless using a client certificate)',
     );
   }
 
@@ -40,6 +53,11 @@ function resolveValidateOptions(argv = {}) {
     host,
     environment,
     token,
+    clientId,
+    clientSecret,
+    aud,
+    scope,
+    tokenUrl,
   };
 }
 

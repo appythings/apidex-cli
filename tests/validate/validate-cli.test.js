@@ -62,7 +62,7 @@ describe('validate command', () => {
     );
     expect(exit).toHaveBeenCalledWith(1);
     expect(log).toHaveBeenCalledWith(
-      expect.stringMatching(/validate requires --host/),
+      expect.stringMatching(/validate requires --host and --environment/),
     );
   });
 

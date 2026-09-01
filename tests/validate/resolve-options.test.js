@@ -6,6 +6,14 @@ const portal = {
   token: 'tok',
 };
 
+const emptyClient = {
+  clientId: '',
+  clientSecret: '',
+  aud: '',
+  scope: '',
+  tokenUrl: '',
+};
+
 describe('resolveValidateOptions', () => {
   it('reads manifestPath and requireLocales from argv', () => {
     expect(
@@ -20,6 +28,7 @@ describe('resolveValidateOptions', () => {
       host: 'http://127.0.0.1:3000',
       environment: '123456',
       token: 'tok',
+      ...emptyClient,
     });
   });
 
@@ -36,6 +45,7 @@ describe('resolveValidateOptions', () => {
       host: 'http://127.0.0.1:3000',
       environment: '123456',
       token: 'tok',
+      ...emptyClient,
     });
   });
 
@@ -48,6 +58,7 @@ describe('resolveValidateOptions', () => {
       host: 'http://127.0.0.1:3000',
       environment: '123456',
       token: 'tok',
+      ...emptyClient,
     });
   });
 
@@ -58,10 +69,68 @@ describe('resolveValidateOptions', () => {
     );
   });
 
-  it('requires host, environment, and token', () => {
+  it('requires host and environment', () => {
     expect(() =>
-      resolveValidateOptions({manifestPath: 'apis.yaml'}),
-    ).toThrow(/validate requires --host/);
+      resolveValidateOptions({manifestPath: 'apis.yaml', token: 'tok'}),
+    ).toThrow(/validate requires --host and --environment/);
+  });
+
+  it('requires token or client credentials', () => {
+    expect(() =>
+      resolveValidateOptions({
+        manifestPath: 'apis.yaml',
+        host: 'http://127.0.0.1:3000',
+        environment: '123456',
+      }),
+    ).toThrow(/validate requires --token or client credentials/);
+  });
+
+  it('accepts client credentials instead of a token', () => {
+    expect(
+      resolveValidateOptions({
+        manifestPath: 'apis.yaml',
+        host: ' http://127.0.0.1:3000 ',
+        environment: ' 123456 ',
+        clientId: ' cid ',
+        clientSecret: ' secret ',
+        aud: ' aud ',
+        scope: ' scope ',
+        tokenUrl: ' https://token.test/oauth ',
+      }),
+    ).toEqual({
+      manifestPath: 'apis.yaml',
+      requireLocales: [],
+      host: 'http://127.0.0.1:3000',
+      environment: '123456',
+      token: '',
+      clientId: 'cid',
+      clientSecret: 'secret',
+      aud: 'aud',
+      scope: 'scope',
+      tokenUrl: 'https://token.test/oauth',
+    });
+  });
+
+  it('rejects clientId without tokenUrl when no token is set', () => {
+    expect(() =>
+      resolveValidateOptions({
+        manifestPath: 'apis.yaml',
+        host: 'http://127.0.0.1:3000',
+        environment: '123456',
+        clientId: 'cid',
+      }),
+    ).toThrow(/validate requires --token or client credentials/);
+  });
+
+  it('rejects tokenUrl without clientId when no token is set', () => {
+    expect(() =>
+      resolveValidateOptions({
+        manifestPath: 'apis.yaml',
+        host: 'http://127.0.0.1:3000',
+        environment: '123456',
+        tokenUrl: 'https://token.test/oauth',
+      }),
+    ).toThrow(/validate requires --token or client credentials/);
   });
 
   it('trims portal connection fields', () => {
@@ -78,6 +147,7 @@ describe('resolveValidateOptions', () => {
       host: 'http://127.0.0.1:3000',
       environment: '123456',
       token: 'tok',
+      ...emptyClient,
     });
   });
 });

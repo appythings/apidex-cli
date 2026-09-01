@@ -8,7 +8,7 @@ Do not commit tokens. Export them in your shell (or a gitignored file):
 ```bash
 export APIDEX_HOST=http://127.0.0.1:3000
 export APIDEX_ENVIRONMENT=123456
-export APIDEX_TOKEN=   # admin token if you assign backend teams
+export APIDEX_TOKEN=   # or client credentials: APIDEX_CLIENTID / APIDEX_SECRET / APIDEX_TOKENURL / APIDEX_SCOPE
 ```
 
 `--environment` is the Apidex environment **id** of the seeded Apigee X env

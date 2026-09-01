@@ -71,10 +71,15 @@ Options:
   --host <host>             portal hostname (or APIDEX_HOST)
   --environment <id>        portal environment id (or APIDEX_ENVIRONMENT)
   --token <token>           portal token (or APIDEX_TOKEN)
+  --clientId <clientId>     OpenID Connect client id (or APIDEX_CLIENTID)
+  --clientSecret <secret>   OpenID Connect client secret (or APIDEX_SECRET)
+  --aud <aud>               audience for client-certificate authentication
+  --scope <scope>           portal app registration scope (or APIDEX_SCOPE)
+  --tokenUrl <tokenUrl>     token URL (or APIDEX_TOKENURL)
   -h, --help                display help for command
 ```
 
-Same binary as `upload-spec`. Spec-repo CI needs portal credentials: `validate` always lists `GET /api/environments/{id}/apiproducts` and matches manifest product `name` to gateway product **name or id**, not displayName. Overlay checks still run if that call fails. A settings file that supplies a default manifest path and required locales is coming later; until then pass the manifest path (and `--require-locales` when you want that gate). Runnable samples: [`examples/`](./examples/).
+Same binary as `upload-spec`. Spec-repo CI needs portal credentials: `validate` always lists `GET /api/environments/{id}/apiproducts` and matches manifest product `name` to gateway product **name or id**, not displayName. Auth is `--token` or the same client credentials as `upload-spec`. Overlay checks still run if that call fails. A settings file that supplies a default manifest path and required locales is coming later; until then pass the manifest path (and `--require-locales` when you want that gate). Runnable samples: [`examples/`](./examples/).
 
 ```
 apidex-cli upload-markdown [options] <directory>
@@ -149,10 +154,11 @@ products:
   relative to where you run the CLI.
 - One entry per locale — a duplicate locale fails the upload.
 
-Run `apidex-cli validate apis.yaml` with `--host`, `--environment`, and `--token`
-(or the `APIDEX_*` env vars), and optionally `--require-locales nl-NL,de-DE`,
-before `upload-spec` so unmatched JSONPath targets, missing overlay files, and
-unknown API products fail in CI instead of at upload time.
+Run `apidex-cli validate apis.yaml` with `--host`, `--environment`, and either
+`--token` or client credentials (`--clientId`, `--tokenUrl`, `--clientSecret`),
+and optionally `--require-locales nl-NL,de-DE`, before `upload-spec` so unmatched
+JSONPath targets, missing overlay files, and unknown API products fail in CI
+instead of at upload time.
 
 #### Writing an overlay
 
