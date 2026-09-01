@@ -3,3 +3,7 @@
 
 # Jest coverage output
 coverage/
+
+# Local CLI smoke-test credentials
+**/.env.local
+.env.local

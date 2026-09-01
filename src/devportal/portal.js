@@ -130,6 +130,20 @@ class Portal {
     );
   }
 
+  apiproductSpecsPath(productName) {
+    return `api/environments/${encodeURIComponent(
+      this.config.environment,
+    )}/apiproducts/${encodeURIComponent(productName)}/specs`;
+  }
+
+  markdownUploadUrl() {
+    const host = this.config.hostname || '';
+    if (/^https?:\/\//i.test(host)) {
+      return `${String(host).replace(/\/$/, '')}/markdown`;
+    }
+    return `https://${host}/markdown`;
+  }
+
   async fetchOverlayLocalesForSpec(specId) {
     if (!specId) return [];
     try {
@@ -147,7 +161,7 @@ class Portal {
   async fetchLatestProductSpecId(productName) {
     try {
       const response = await this.request.get(
-        `api/environments/${this.config.environment}/apiproducts/${productName}/specs`,
+        this.apiproductSpecsPath(productName),
       );
       const specs = Array.isArray(response.data) ? response.data : [];
       const latest = specs.find(spec => spec.latest) || specs[0];
@@ -233,9 +247,9 @@ class Portal {
         await this.assertOverlaysNotDropped(product.name, overlays);
         return this.request
           .post(
-            `api/environments/${this.config.environment}/apiproducts/${
-              product.name
-            }/specs${this.config.force ? '?force=true' : ''}`,
+            `${this.apiproductSpecsPath(product.name)}${
+              this.config.force ? '?force=true' : ''
+            }`,
             {
               spec: parsedSwagger,
               inheritSpec: false,
@@ -328,9 +342,9 @@ class Portal {
             }
             return this.request
               .post(
-                `api/environments/${this.config.environment}/apiproducts/${
-                  product.name
-                }/specs${this.config.force ? '?force=true' : ''}`,
+                `${this.apiproductSpecsPath(product.name)}${
+                  this.config.force ? '?force=true' : ''
+                }`,
                 {
                   spec: parsedSwagger,
                   categoryId: category.name,
@@ -656,6 +670,19 @@ class Portal {
     }
   }
 
+  async listApiproducts() {
+    if (!this.config.token) {
+      await this.login();
+    }
+    const response = await this.request.get(
+      `api/environments/${encodeURIComponent(
+        this.config.environment,
+      )}/apiproducts`,
+    );
+    const data = response && response.data;
+    return Array.isArray(data) ? data : [];
+  }
+
   async getProducts() {
     const products = await this.request.get(
       `api/environments/${this.config.environment}/apiproducts`,
@@ -676,7 +703,7 @@ class Portal {
       filename: 'markdown.zip',
     });
     return axios.post(
-      `https://${this.config.hostname}/markdown`,
+      this.markdownUploadUrl(),
       form.getBuffer(),
       {
         headers: {

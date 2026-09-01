@@ -90,13 +90,31 @@ function createProgram() {
       '--require-locales <list>',
       'comma-separated locales every non-inherited spec must declare overlays for',
     )
+    .option(
+      '--host <host>',
+      'portal hostname (or APIDEX_HOST)',
+      process.env.APIDEX_HOST,
+    )
+    .option(
+      '--environment <environment>',
+      'portal environment id (or APIDEX_ENVIRONMENT)',
+      process.env.APIDEX_ENVIRONMENT,
+    )
+    .option(
+      '--token <token>',
+      'portal token (or APIDEX_TOKEN)',
+      process.env.APIDEX_TOKEN,
+    )
     .description(
-      'validate OpenAPI overlay files in a spec manifest (no API calls)',
+      'validate OpenAPI overlay files and that manifest API products exist in the portal',
     )
     .action(async (manifest, command) => {
       await runValidateCli({
         manifestPath: manifest,
         requireLocales: command.requireLocales,
+        host: command.host,
+        environment: command.environment,
+        token: command.token,
       });
     });
 

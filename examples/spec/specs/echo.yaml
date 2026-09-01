@@ -1,0 +1,25 @@
+openapi: "3.1.0"
+info:
+  title: Echo V1
+  version: "1.0.0"
+  description: Canonical Echo V1 spec for local CLI smoke tests.
+paths:
+  /pets:
+    get:
+      summary: List pets
+      responses:
+        "200":
+          description: ok
+  /internal:
+    get:
+      summary: Internal only
+      responses:
+        "200":
+          description: ok
+webhooks:
+  echoReceived:
+    post:
+      summary: Fired when an echo is received
+      responses:
+        "200":
+          description: Received

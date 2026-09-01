@@ -185,19 +185,30 @@ describe('CLI index', () => {
     );
   });
 
-  it('validate does not construct Portal and delegates to runValidateCli', async () => {
+  it('validate forwards portal connection flags without constructing Portal', async () => {
     await parseCli(
       'validate',
       manifestPath,
       '--require-locales',
       'nl-NL,de-DE',
+      '--host',
+      'http://127.0.0.1:3000',
+      '--environment',
+      '123456',
+      '--token',
+      'tok',
     );
 
     expect(Portal).not.toHaveBeenCalled();
-    expect(mockRunValidateCli).toHaveBeenCalledWith({
-      manifestPath,
-      requireLocales: 'nl-NL,de-DE',
-    });
+    expect(mockRunValidateCli).toHaveBeenCalledWith(
+      expect.objectContaining({
+        manifestPath,
+        requireLocales: 'nl-NL,de-DE',
+        host: 'http://127.0.0.1:3000',
+        environment: '123456',
+        token: 'tok',
+      }),
+    );
   });
 
   it('prints package version for -v', () => {

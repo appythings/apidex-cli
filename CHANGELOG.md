@@ -3,11 +3,13 @@
 ## Unreleased
 
 ### Added
-- `apidex-cli validate [manifest] [--require-locales …]` — local Overlay 1.x checks with no API calls. Jest coverage now includes `src/validate/**`.
+- `apidex-cli validate` always checks that manifest API products exist in the portal (name or id, not displayName). Needs `--host`, `--environment`, and `--token`. Overlay checks still run if the portal call fails.
 - Upload fails when a new spec version would ship without overlay files while the portal already has overlays for that spec (`--force` does not bypass).
 
 ### Changed
 - Overlay wording is Overlay 1.x (including `remove` and non-copy `update`), not copy-only translations.
+- Replaced `examples/overlay-demo/` with `examples/spec/` (validate + upload-spec) and `examples/markdown/` (upload-markdown). Spec example targets local Apigee X product `pep-echo` (displayName Echo v1) inheriting category `CLI category` (`echo.yaml`).
+- Spec upload paths encode environment and product names (so names like `Echo V1` work). `upload-markdown` keeps `https://` hosts as-is when `--host` already includes a scheme.
 
 ## 1.1.0
 

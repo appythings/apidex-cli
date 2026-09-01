@@ -64,14 +64,17 @@ Options:
 ```
 apidex-cli validate [manifest] [--require-locales <list>]
 
-validate OpenAPI overlay files in a spec manifest (no API calls, no tokens)
+validate OpenAPI overlay files and that manifest API products exist in the portal
 
 Options:
   --require-locales <list>  comma-separated locales every non-inherited spec must declare overlays for
+  --host <host>             portal hostname (or APIDEX_HOST)
+  --environment <id>        portal environment id (or APIDEX_ENVIRONMENT)
+  --token <token>           portal token (or APIDEX_TOKEN)
   -h, --help                display help for command
 ```
 
-Same binary as `upload-spec`. Spec-repo CI can run this in a PR job with only the CLI and the manifest. A settings file that supplies a default manifest path and required locales is coming later; until then pass the manifest path (and `--require-locales` when you want that gate). Example: `examples/overlay-demo/`.
+Same binary as `upload-spec`. Spec-repo CI needs portal credentials: `validate` always lists `GET /api/environments/{id}/apiproducts` and matches manifest product `name` to gateway product **name or id**, not displayName. Overlay checks still run if that call fails. A settings file that supplies a default manifest path and required locales is coming later; until then pass the manifest path (and `--require-locales` when you want that gate). Runnable samples: [`examples/`](./examples/).
 
 ```
 apidex-cli upload-markdown [options] <directory>
@@ -146,9 +149,10 @@ products:
   relative to where you run the CLI.
 - One entry per locale — a duplicate locale fails the upload.
 
-Run `apidex-cli validate apis.yaml` (and optionally `--require-locales nl-NL,de-DE`)
-before `upload-spec` so unmatched JSONPath targets and missing files fail in CI
-instead of at upload time.
+Run `apidex-cli validate apis.yaml` with `--host`, `--environment`, and `--token`
+(or the `APIDEX_*` env vars), and optionally `--require-locales nl-NL,de-DE`,
+before `upload-spec` so unmatched JSONPath targets, missing overlay files, and
+unknown API products fail in CI instead of at upload time.
 
 #### Writing an overlay
 

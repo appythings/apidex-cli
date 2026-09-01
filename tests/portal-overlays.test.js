@@ -49,6 +49,19 @@ describe('pushSwagger with overlays', () => {
     ]);
   });
 
+  it('encodes spaces in product names on spec upload URLs', async () => {
+    const portal = newPortal('manifest-echo-v1.yaml');
+    jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    mockEmptyOverlayLookups(portal);
+
+    await portal.pushSwagger();
+
+    expect(portal.request.post).toHaveBeenCalledWith(
+      'api/environments/e1/apiproducts/Echo%20V1/specs',
+      expect.objectContaining({latest: true}),
+    );
+  });
+
   it('keeps the canonical spec free of translated content', async () => {
     const portal = newPortal('manifest-products-overlays.yaml');
     jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});

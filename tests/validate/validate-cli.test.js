@@ -1,15 +1,26 @@
+jest.mock('../../src/validate/load-gateway-products', () => ({
+  loadGatewayProducts: jest.fn().mockResolvedValue([
+    {id: 'pet-store', name: 'pet-store'},
+  ]),
+}));
+
 const path = require('path');
 const {runValidate} = require('../../src/validate');
 const {runValidateCli} = require('../../src/commands/validate');
 
 const fixtures = path.join(__dirname, '../fixtures/validate');
+const portal = {
+  host: 'http://127.0.0.1:3000',
+  environment: 'e1',
+  token: 'tok',
+};
 
 describe('validate command', () => {
   it('exits 0 for a valid manifest', async () => {
     const log = jest.fn();
     const exit = jest.fn();
     await runValidateCli(
-      {manifestPath: path.join(fixtures, 'manifest-ok.yaml')},
+      {manifestPath: path.join(fixtures, 'manifest-ok.yaml'), ...portal},
       {log, exit},
     );
     expect(exit).toHaveBeenCalledWith(0);
@@ -22,7 +33,10 @@ describe('validate command', () => {
     const log = jest.fn();
     const exit = jest.fn();
     await runValidateCli(
-      {manifestPath: path.join(fixtures, 'manifest-zero-target.yaml')},
+      {
+        manifestPath: path.join(fixtures, 'manifest-zero-target.yaml'),
+        ...portal,
+      },
       {log, exit},
     );
     expect(exit).toHaveBeenCalledWith(1);
@@ -39,9 +53,23 @@ describe('validate command', () => {
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/manifest path/));
   });
 
+  it('exits 1 when portal connection flags are missing', async () => {
+    const log = jest.fn();
+    const exit = jest.fn();
+    await runValidateCli(
+      {manifestPath: path.join(fixtures, 'manifest-ok.yaml')},
+      {log, exit},
+    );
+    expect(exit).toHaveBeenCalledWith(1);
+    expect(log).toHaveBeenCalledWith(
+      expect.stringMatching(/validate requires --host/),
+    );
+  });
+
   it('still reports later checks after an earlier failure', async () => {
     const {ok, results} = await runValidate({
       manifestPath: path.join(fixtures, 'manifest-missing-file.yaml'),
+      ...portal,
     });
     expect(ok).toBe(false);
     expect(results.map(result => result.id)).toEqual([
@@ -50,6 +78,7 @@ describe('validate command', () => {
       'overlay-shape',
       'overlay-targets',
       'required-locales',
+      'manifest-products',
     ]);
     expect(results.find(result => result.id === 'overlay-files').ok).toBe(
       false,
@@ -61,6 +90,7 @@ describe('validate command', () => {
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
     await runValidateCli({
       manifestPath: path.join(fixtures, 'manifest-ok.yaml'),
+      ...portal,
     });
     expect(exitSpy).toHaveBeenCalledWith(0);
     logSpy.mockRestore();
