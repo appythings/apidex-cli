@@ -246,9 +246,15 @@ describe('pushSwagger with overlays', () => {
       return {data: [{id: 'old-spec', latest: true}]};
     });
 
-    await expect(portal.pushSwagger()).rejects.toThrow(
-      /would drop overlays for de-DE/,
-    );
+    let dropError;
+    try {
+      await portal.pushSwagger();
+    } catch (error) {
+      dropError = error;
+    }
+    expect(dropError.message).toMatch(/would drop overlays for de-DE/);
+    expect(dropError.message).toMatch(/DELETE \/api\/specs\/\{id\}\/overlays/);
+    expect(dropError.message).not.toMatch(/require-locales/);
     expect(postSpy).not.toHaveBeenCalled();
   });
 
@@ -397,11 +403,12 @@ describe('pushCategories with overlays', () => {
     jest
       .spyOn(portal.request, 'put')
       .mockRejectedValue(new Error('overlay put failed'));
-    jest
+    const deleteSpy = jest
       .spyOn(portal.request, 'delete')
       .mockRejectedValue(new Error('cleanup failed'));
 
     await expect(portal.pushCategories()).rejects.toThrow('overlay put failed');
+    expect(deleteSpy).toHaveBeenCalledWith('api/specs/cat-spec-1');
   });
 
   it('does not call the overlay endpoint for a category without overlays', async () => {
@@ -431,10 +438,52 @@ describe('pushCategories with overlays', () => {
       return {data: [{id: 'old-cat', latest: true}]};
     });
 
-    await expect(portal.pushCategories()).rejects.toThrow(
+    let dropError;
+    try {
+      await portal.pushCategories();
+    } catch (error) {
+      dropError = error;
+    }
+    expect(dropError.message).toMatch(
       /Refusing to upload cat1 without overlay files/,
     );
+    expect(dropError.message).toMatch(/DELETE \/api\/specs\/\{id\}\/overlays/);
+    expect(dropError.message).not.toMatch(/require-locales/);
     expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not treat an API product of the same name as the category spec', async () => {
+    const portal = newPortal('manifest-categories-overlays.yaml');
+    portal.login = jest.fn();
+    const postSpy = jest
+      .spyOn(portal.request, 'post')
+      .mockResolvedValue({data: {id: 'cat-spec-1'}});
+    jest.spyOn(portal.request, 'put').mockResolvedValue({});
+    const getSpy = jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+      const href = String(url);
+      if (href.includes('/overlays')) {
+        if (href.includes('product-spec-cat')) {
+          return {data: [{locale: 'fr-FR'}]};
+        }
+        return {data: []};
+      }
+      if (href.includes('apiproducts') && href.includes('cat1')) {
+        return {data: [{id: 'product-spec-cat', latest: true}]};
+      }
+      return {data: []};
+    });
+
+    await portal.pushCategories();
+
+    expect(postSpy).toHaveBeenCalledWith(
+      'api/specs',
+      expect.objectContaining({categoryId: 'cat1'}),
+    );
+    expect(
+      getSpy.mock.calls.some(([url]) =>
+        /apiproducts\/.*cat1.*\/specs/.test(String(url)),
+      ),
+    ).toBe(false);
   });
 
   it('treats a 404 category spec list as a first-time upload', async () => {

@@ -126,13 +126,13 @@ class Portal {
 
   overlayDropError(name, locales) {
     return new Error(
-      `Refusing to upload ${name} without overlay files: the portal already has overlays for ${locales.join(', ')}. Declare overlays in the manifest or DELETE /api/specs/{id}/overlays. Use apidex-cli validate --require-locales in CI to catch this before upload.`,
+      `Refusing to upload ${name} without overlay files: the portal already has overlays for ${locales.join(', ')}. Declare overlays in the manifest or DELETE /api/specs/{id}/overlays.`,
     );
   }
 
   overlayPartialDropError(name, locales) {
     return new Error(
-      `Refusing to upload ${name}: the new version would drop overlays for ${locales.join(', ')}. Declare overlays for those locales in the manifest or DELETE /api/specs/{id}/overlays. Use apidex-cli validate --require-locales in CI to catch this before upload.`,
+      `Refusing to upload ${name}: the new version would drop overlays for ${locales.join(', ')}. Declare overlays for those locales in the manifest or DELETE /api/specs/{id}/overlays.`,
     );
   }
 
@@ -215,8 +215,7 @@ class Portal {
     let specId = options.specId;
     if (!specId && options.categoryId) {
       specId = await this.fetchLatestCategorySpecId(options.categoryId);
-    }
-    if (!specId) {
+    } else if (!specId) {
       specId = await this.fetchLatestProductSpecId(name);
     }
     const existing = await this.fetchOverlayLocalesForSpec(specId);

@@ -179,9 +179,9 @@ actions:
     remove: true
 ```
 
-Upload still checks Overlay shape (`overlay` version `1.x.y`, non-empty `actions`,
-each action a `target` plus `update` and/or `remove`). `validate` also fails when
-a `target` matches no node in the local spec.
+Upload still checks Overlay shape (`overlay` version `1.x.y`, required
+`info.title`, non-empty `actions`, each action a `target` plus `update` and/or
+`remove`). `validate` also fails when a `target` matches no node in the local spec.
 
 #### Categories and inherited specs
 
@@ -225,11 +225,16 @@ because there is no product-owned spec to apply them to.
   `locale`.
 
 Overlays belong to a **spec version** and are **not** copied on a version bump.
-`upload-spec` **fails** (exit 1) when the manifest entry has no overlay files and
-the portal already has overlays for that product or category spec. `--force` does
-not bypass this. First-time specs with no overlays succeed. `inheritSpec` products
-are exempt (overlays live on the category). Clear stored overlays with
+`upload-spec` **fails** (exit 1) when the new version would drop published
+overlays: the manifest has no overlay files, or it omits a locale the portal
+already has. Incoming equal or superset is OK. `--force` does not bypass this.
+First-time specs with no overlays succeed. `inheritSpec` products are exempt
+(overlays live on the category). Clear stored overlays with
 `DELETE /api/specs/{specId}/overlays`.
+
+A failed overlay PUT on a **category** spec deletes that newly created spec
+(same as the portal UI). That delete can cascade `inheritSpec` product specs for
+the same category; re-run `upload-spec` to restore inherit links.
 
 #### A note on `x-{attribute}-{locale}`
 
