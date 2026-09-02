@@ -73,6 +73,15 @@ function validateOverlayDocument(overlay, where) {
       `Overlay ${where} declares unsupported version "${overlay.overlay}". Supported: Overlay 1.x.y`,
     );
   }
+  if (
+    !overlay.info ||
+    typeof overlay.info !== 'object' ||
+    Array.isArray(overlay.info) ||
+    typeof overlay.info.title !== 'string' ||
+    overlay.info.title.trim() === ''
+  ) {
+    throw new Error(`Overlay ${where} is missing info.title`);
+  }
   if (!Array.isArray(overlay.actions) || overlay.actions.length === 0) {
     throw new Error(`Overlay ${where} must contain a non-empty "actions" array`);
   }

@@ -6,7 +6,7 @@ const fs = require('fs-extra');
 const FormData = require('form-data');
 const jwt = require('../lib/jwt');
 const {formatRequestError} = require('../lib/formatAxiosError');
-const {loadOverlays} = require('../lib/overlays');
+const {canonicalizeLocale, loadOverlays} = require('../lib/overlays');
 
 class Portal {
   /** @param {Record<string, unknown>} yml */
@@ -130,6 +130,12 @@ class Portal {
     );
   }
 
+  overlayPartialDropError(name, locales) {
+    return new Error(
+      `Refusing to upload ${name}: the new version would drop overlays for ${locales.join(', ')}. Declare overlays for those locales in the manifest or DELETE /api/specs/{id}/overlays. Use apidex-cli validate --require-locales in CI to catch this before upload.`,
+    );
+  }
+
   apiproductSpecsPath(productName) {
     return `api/environments/${encodeURIComponent(
       this.config.environment,
@@ -201,14 +207,11 @@ class Portal {
   }
 
   /**
-   * New spec versions do not copy overlays. Uploading without overlay files
-   * while the portal already has some would silently drop them from the new
-   * version — fail instead.
+   * New spec versions do not copy overlays. Uploading without overlay files,
+   * or with a subset of the locales already published, would drop translations
+   * from the new version — fail instead.
    */
   async assertOverlaysNotDropped(name, overlays, options = {}) {
-    if (Array.isArray(overlays) && overlays.length > 0) {
-      return;
-    }
     let specId = options.specId;
     if (!specId && options.categoryId) {
       specId = await this.fetchLatestCategorySpecId(options.categoryId);
@@ -216,9 +219,26 @@ class Portal {
     if (!specId) {
       specId = await this.fetchLatestProductSpecId(name);
     }
-    const locales = await this.fetchOverlayLocalesForSpec(specId);
-    if (locales.length > 0) {
-      throw this.overlayDropError(name, locales);
+    const existing = await this.fetchOverlayLocalesForSpec(specId);
+    if (existing.length === 0) {
+      return;
+    }
+
+    const incoming = new Set(
+      (Array.isArray(overlays) ? overlays : [])
+        .map(entry => canonicalizeLocale(entry && entry.locale))
+        .filter(Boolean),
+    );
+    if (incoming.size === 0) {
+      throw this.overlayDropError(name, existing);
+    }
+
+    const dropped = existing.filter(locale => {
+      const canonical = canonicalizeLocale(locale) || locale;
+      return !incoming.has(canonical);
+    });
+    if (dropped.length > 0) {
+      throw this.overlayPartialDropError(name, dropped);
     }
   }
 
@@ -309,6 +329,17 @@ class Portal {
             console.log(
               `Failed to upload overlays for category ${category.name}`,
             );
+            try {
+              await this.request.delete(`api/specs/${categorySpecId}`);
+            } catch (cleanupError) {
+              console.log(
+                `Failed to roll back category spec ${categorySpecId}: ${
+                  cleanupError instanceof Error
+                    ? cleanupError.message
+                    : String(cleanupError)
+                }`,
+              );
+            }
             throw error;
           }
         }

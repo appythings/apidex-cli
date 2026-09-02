@@ -36,6 +36,7 @@ describe('pushSwagger with overlays', () => {
   it('sends declared overlays alongside the spec', async () => {
     const portal = newPortal('manifest-products-overlays.yaml');
     jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    mockEmptyOverlayLookups(portal);
 
     await portal.pushSwagger();
 
@@ -65,6 +66,7 @@ describe('pushSwagger with overlays', () => {
   it('keeps the canonical spec free of translated content', async () => {
     const portal = newPortal('manifest-products-overlays.yaml');
     jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    mockEmptyOverlayLookups(portal);
 
     await portal.pushSwagger();
 
@@ -77,6 +79,7 @@ describe('pushSwagger with overlays', () => {
   it('preserves JSONPath targets through the upload payload', async () => {
     const portal = newPortal('manifest-products-overlays.yaml');
     jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    mockEmptyOverlayLookups(portal);
 
     await portal.pushSwagger();
 
@@ -223,6 +226,45 @@ describe('pushSwagger with overlays', () => {
     await expect(portal.pushSwagger()).rejects.toThrow(/without overlay files/);
     expect(postSpy).not.toHaveBeenCalled();
   });
+
+  it('refuses a new version that would drop a subset of overlay locales', async () => {
+    const portal = newPortal('manifest-products-overlays.yaml');
+    portal.swaggerFiles = [
+      {
+        name: 'api-product-1',
+        openapi: 'swagger-min.yaml',
+        overlays: [{locale: 'nl-NL', path: 'overlay-nl.yaml'}],
+      },
+    ];
+    const postSpy = jest
+      .spyOn(portal.request, 'post')
+      .mockResolvedValue({data: {id: 's1'}});
+    jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+      if (String(url).includes('/overlays')) {
+        return {data: [{locale: 'nl-NL'}, {locale: 'de-DE'}]};
+      }
+      return {data: [{id: 'old-spec', latest: true}]};
+    });
+
+    await expect(portal.pushSwagger()).rejects.toThrow(
+      /would drop overlays for de-DE/,
+    );
+    expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  it('uploads when the incoming locales cover every published overlay locale', async () => {
+    const portal = newPortal('manifest-products-overlays.yaml');
+    jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 's1'}});
+    jest.spyOn(portal.request, 'get').mockImplementation(async url => {
+      if (String(url).includes('/overlays')) {
+        return {data: [{locale: 'nl-NL'}, {locale: 'de-DE'}]};
+      }
+      return {data: [{id: 'old-spec', latest: true}]};
+    });
+
+    await portal.pushSwagger();
+    expect(portal.request.post).toHaveBeenCalled();
+  });
 });
 
 describe('pushCategories with overlays', () => {
@@ -246,6 +288,7 @@ describe('pushCategories with overlays', () => {
       .spyOn(portal.request, 'post')
       .mockResolvedValue({data: {id: 'cat-spec-1'}});
     const putSpy = jest.spyOn(portal.request, 'put').mockResolvedValue({});
+    mockEmptyOverlayLookups(portal);
 
     await portal.pushCategories();
 
@@ -263,6 +306,7 @@ describe('pushCategories with overlays', () => {
       .spyOn(portal.request, 'post')
       .mockResolvedValue({data: {id: 'cat-spec-1'}});
     jest.spyOn(portal.request, 'put').mockResolvedValue({});
+    mockEmptyOverlayLookups(portal);
 
     await portal.pushCategories();
 
@@ -281,6 +325,7 @@ describe('pushCategories with overlays', () => {
       .spyOn(portal.request, 'post')
       .mockResolvedValue({data: {id: 'cat-spec-1'}});
     jest.spyOn(portal.request, 'put').mockResolvedValue({});
+    mockEmptyOverlayLookups(portal);
 
     await portal.pushCategories();
 
@@ -298,6 +343,7 @@ describe('pushCategories with overlays', () => {
       .spyOn(portal.request, 'post')
       .mockResolvedValue({data: {id: 'cat-spec-1'}});
     jest.spyOn(portal.request, 'put').mockResolvedValue({});
+    mockEmptyOverlayLookups(portal);
 
     await portal.pushCategories();
 
@@ -333,6 +379,27 @@ describe('pushCategories with overlays', () => {
       .mockResolvedValue({data: {id: 'cat-spec-1'}});
     const putError = new Error('overlay put failed');
     jest.spyOn(portal.request, 'put').mockRejectedValue(putError);
+    const deleteSpy = jest
+      .spyOn(portal.request, 'delete')
+      .mockResolvedValue({});
+
+    await expect(portal.pushCategories()).rejects.toThrow('overlay put failed');
+    expect(deleteSpy).toHaveBeenCalledWith('api/specs/cat-spec-1');
+  });
+
+  it('still throws the PUT error when category spec rollback fails', async () => {
+    const portal = newPortal('manifest-categories-overlays.yaml');
+    portal.login = jest.fn();
+    mockEmptyOverlayLookups(portal);
+    jest
+      .spyOn(portal.request, 'post')
+      .mockResolvedValue({data: {id: 'cat-spec-1'}});
+    jest
+      .spyOn(portal.request, 'put')
+      .mockRejectedValue(new Error('overlay put failed'));
+    jest
+      .spyOn(portal.request, 'delete')
+      .mockRejectedValue(new Error('cleanup failed'));
 
     await expect(portal.pushCategories()).rejects.toThrow('overlay put failed');
   });

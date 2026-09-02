@@ -9,6 +9,20 @@ const {
 
 const fixtures = path.join(__dirname, 'fixtures');
 
+describe('SUPPORTED_LOCALES', () => {
+  it('matches the portal locale contract', () => {
+    expect(SUPPORTED_LOCALES).toEqual([
+      'en-GB',
+      'nl-NL',
+      'de-DE',
+      'fr-FR',
+      'es-ES',
+      'se-SE',
+      'ar-SA',
+    ]);
+  });
+});
+
 describe('canonicalizeLocale', () => {
   it('accepts every supported locale unchanged', () => {
     for (const locale of SUPPORTED_LOCALES) {
@@ -118,6 +132,18 @@ describe('validateOverlayDocument', () => {
     doc.actions = [];
     expect(() => validateOverlayDocument(doc, 'f')).toThrow(
       'non-empty "actions" array',
+    );
+  });
+
+  it('rejects a missing info title', () => {
+    const doc = valid();
+    delete doc.info;
+    expect(() => validateOverlayDocument(doc, 'f')).toThrow('missing info.title');
+
+    const empty = valid();
+    empty.info = {};
+    expect(() => validateOverlayDocument(empty, 'f')).toThrow(
+      'missing info.title',
     );
   });
 

@@ -155,10 +155,11 @@ products:
 - One entry per locale — a duplicate locale fails the upload.
 
 Run `apidex-cli validate apis.yaml` with `--host`, `--environment`, and either
-`--token` or client credentials (`--clientId`, `--tokenUrl`, `--clientSecret`),
-and optionally `--require-locales nl-NL,de-DE`, before `upload-spec` so unmatched
-JSONPath targets, missing overlay files, and unknown API products fail in CI
-instead of at upload time.
+`--token` or client credentials (`--clientId`, `--tokenUrl`, `--clientSecret`)
+before `upload-spec` so unmatched JSONPath targets, missing overlay files, and
+unknown API products fail in CI instead of at upload time. CI that requires a
+full set of translations should also pass `--require-locales nl-NL,de-DE` (or
+the locales you ship); the flag stays opt-in.
 
 #### Writing an overlay
 
