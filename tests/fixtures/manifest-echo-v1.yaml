@@ -1,0 +1,3 @@
+products:
+  - name: Echo V1
+    openapi: swagger-min.yaml

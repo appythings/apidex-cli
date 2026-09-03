@@ -30,6 +30,7 @@ describe('pushSwagger OAS 3.1 integration (real parser, mocked HTTP)', () => {
       status: 200,
       data: {id: 'spec-1'},
     });
+    jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
     await portal.pushSwagger();
 

@@ -529,6 +529,7 @@ describe('Portal', () => {
         mf,
       );
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushSwagger();
 
@@ -555,6 +556,7 @@ describe('Portal', () => {
 
       const err = new Error('network');
       jest.spyOn(portal.request, 'post').mockRejectedValue(err);
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await expect(portal.pushSwagger()).rejects.toThrow('network');
       expect(
@@ -591,6 +593,26 @@ describe('Portal', () => {
         }),
       );
     });
+
+    it('keeps an existing http scheme on local hosts', async () => {
+      const portal = new Portal({
+        hostname: 'http://127.0.0.1:3000',
+        token: 'abc',
+      });
+      portal.request.defaults.headers.common.Authorization = 'Bearer abc';
+      const spyPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({status: 200});
+
+      await portal.pushMarkdown(Buffer.from('zip'));
+
+      expect(spyPost).toHaveBeenCalledWith(
+        'http://127.0.0.1:3000/markdown',
+        expect.anything(),
+        expect.anything(),
+      );
+      spyPost.mockRestore();
+    });
   });
 
   describe('getProducts', () => {
@@ -614,6 +636,92 @@ describe('Portal', () => {
       const out = await portal.getProducts();
       expect(out).toHaveLength(1);
       expect(out[0].name).toBe('api-product-1');
+    });
+  });
+
+  describe('listApiproducts', () => {
+    it('returns the unfiltered portal product list', async () => {
+      const mf = path.join(fixtures, 'manifest-products-only.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          token: 't',
+          environment: 'e1',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({
+        data: [
+          {name: 'api-product-1', id: 'api-product-1'},
+          {name: 'other', id: 'other'},
+        ],
+      });
+
+      const out = await portal.listApiproducts();
+      expect(portal.request.get).toHaveBeenCalledWith(
+        'api/environments/e1/apiproducts',
+      );
+      expect(out).toHaveLength(2);
+    });
+
+    it('encodes the environment id in the products path', async () => {
+      const mf = path.join(fixtures, 'manifest-products-only.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          token: 't',
+          environment: 'env/x',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      await portal.listApiproducts();
+      expect(portal.request.get).toHaveBeenCalledWith(
+        'api/environments/env%2Fx/apiproducts',
+      );
+    });
+
+    it('returns an empty list when the response is missing', async () => {
+      const mf = path.join(fixtures, 'manifest-products-only.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          token: 't',
+          environment: 'e1',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue(undefined);
+      await expect(portal.listApiproducts()).resolves.toEqual([]);
+    });
+
+    it('returns an empty list when the response is not an array', async () => {
+      const mf = path.join(fixtures, 'manifest-products-only.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          token: 't',
+          environment: 'e1',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: {all: []}});
+      await expect(portal.listApiproducts()).resolves.toEqual([]);
+    });
+
+    it('logs in when no token is configured', async () => {
+      const mf = path.join(fixtures, 'manifest-products-only.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+        },
+        mf,
+      );
+      portal.login = jest.fn().mockResolvedValue();
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      await portal.listApiproducts();
+      expect(portal.login).toHaveBeenCalled();
     });
   });
 
@@ -650,6 +758,7 @@ describe('Portal', () => {
         yamlPath,
       );
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushCategories();
       expect(portal.request.post).toHaveBeenCalled();
@@ -674,6 +783,7 @@ describe('Portal', () => {
         yamlPath,
       );
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushCategories();
 
@@ -699,6 +809,7 @@ describe('Portal', () => {
       );
       portal.login = jest.fn().mockResolvedValue();
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushCategories();
 
@@ -727,6 +838,7 @@ describe('Portal', () => {
         .spyOn(portal.request, 'post')
         .mockResolvedValueOnce({})
         .mockRejectedValueOnce(new Error('nested upload fail'));
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await expect(portal.pushCategories()).rejects.toThrow(
         'nested upload fail',
@@ -1054,6 +1166,7 @@ describe('Portal', () => {
         portal.request.defaults.headers.common.Authorization = 'Bearer x';
       });
       jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
       await portal.pushSwagger();
 

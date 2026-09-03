@@ -1,0 +1,4 @@
+products:
+  - name: pet-store
+    openapi: spec.yaml
+    overlays: not-a-list

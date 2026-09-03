@@ -1,0 +1,30 @@
+# Sample spec-repo manifest aimed at a local Apigee X portal.
+# `name` must be the Apigee product name, not displayName
+# (catalog card "Echo v1" is product `pep-echo`).
+# pep-echo inherits the category spec (PDX-1728-style catalog join).
+#
+#   node ../../src/index.js validate apis.yaml --host ... --environment ... --token ...
+#   node ../../src/index.js validate apis.yaml --require-locales nl-NL,de-DE --host ... --environment ... --token ...
+categories:
+  - name: CLI category
+    openapi: specs/echo.yaml
+    overlays:
+      - locale: nl-NL
+        path: overlays/echo-nl-NL.yaml
+      - locale: de-DE
+        path: overlays/echo-de-DE.json
+    products:
+      - name: pep-echo
+        inheritSpec: true
+        permissionGroup: owners
+        backendTeam: example-backend
+teams:
+  - name: example-producers
+    owner: owner@example.test
+    permissionGroups:
+      - owners
+backendTeams:
+  - name: example-backend
+    owner: owner@example.test
+    permissionGroups:
+      - owners

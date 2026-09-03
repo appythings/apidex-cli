@@ -6,6 +6,7 @@ const fs = require('fs-extra');
 const FormData = require('form-data');
 const jwt = require('../lib/jwt');
 const {formatRequestError} = require('../lib/formatAxiosError');
+const {canonicalizeLocale, loadOverlays} = require('../lib/overlays');
 
 class Portal {
   /** @param {Record<string, unknown>} yml */
@@ -123,6 +124,123 @@ class Portal {
     throw new Error('Openapi spec must be either yaml/yml or json');
   }
 
+  overlayDropError(name, locales) {
+    return new Error(
+      `Refusing to upload ${name} without overlay files: the portal already has overlays for ${locales.join(', ')}. Declare overlays in the manifest or DELETE /api/specs/{id}/overlays.`,
+    );
+  }
+
+  overlayPartialDropError(name, locales) {
+    return new Error(
+      `Refusing to upload ${name}: the new version would drop overlays for ${locales.join(', ')}. Declare overlays for those locales in the manifest or DELETE /api/specs/{id}/overlays.`,
+    );
+  }
+
+  apiproductSpecsPath(productName) {
+    return `api/environments/${encodeURIComponent(
+      this.config.environment,
+    )}/apiproducts/${encodeURIComponent(productName)}/specs`;
+  }
+
+  markdownUploadUrl() {
+    const host = this.config.hostname || '';
+    if (/^https?:\/\//i.test(host)) {
+      return `${String(host).replace(/\/$/, '')}/markdown`;
+    }
+    return `https://${host}/markdown`;
+  }
+
+  async fetchOverlayLocalesForSpec(specId) {
+    if (!specId) return [];
+    try {
+      const response = await this.request.get(`api/specs/${specId}/overlays`);
+      const rows = Array.isArray(response.data) ? response.data : [];
+      return rows.map(row => row.locale).filter(Boolean);
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  async fetchLatestProductSpecId(productName) {
+    try {
+      const response = await this.request.get(
+        this.apiproductSpecsPath(productName),
+      );
+      const specs = Array.isArray(response.data) ? response.data : [];
+      const latest = specs.find(spec => spec.latest) || specs[0];
+      return latest && latest.id;
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  async fetchLatestCategorySpecId(categoryId) {
+    try {
+      const filter = JSON.stringify({
+        where: {
+          and: [
+            {categoryId},
+            {environmentId: this.config.environment},
+          ],
+        },
+      });
+      const response = await this.request.get(
+        `api/specs?filter=${encodeURIComponent(filter)}`,
+      );
+      const specs = Array.isArray(response.data) ? response.data : [];
+      const categorySpecs = specs.filter(spec => !spec.productId);
+      const latest =
+        categorySpecs.find(spec => spec.latest) || categorySpecs[0];
+      return latest && latest.id;
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * New spec versions do not copy overlays. Uploading without overlay files,
+   * or with a subset of the locales already published, would drop translations
+   * from the new version — fail instead.
+   */
+  async assertOverlaysNotDropped(name, overlays, options = {}) {
+    let specId = options.specId;
+    if (!specId && options.categoryId) {
+      specId = await this.fetchLatestCategorySpecId(options.categoryId);
+    } else if (!specId) {
+      specId = await this.fetchLatestProductSpecId(name);
+    }
+    const existing = await this.fetchOverlayLocalesForSpec(specId);
+    if (existing.length === 0) {
+      return;
+    }
+
+    const incoming = new Set(
+      (Array.isArray(overlays) ? overlays : [])
+        .map(entry => canonicalizeLocale(entry && entry.locale))
+        .filter(Boolean),
+    );
+    if (incoming.size === 0) {
+      throw this.overlayDropError(name, existing);
+    }
+
+    const dropped = existing.filter(locale => {
+      const canonical = canonicalizeLocale(locale) || locale;
+      return !incoming.has(canonical);
+    });
+    if (dropped.length > 0) {
+      throw this.overlayPartialDropError(name, dropped);
+    }
+  }
+
   async pushSwagger() {
     if (!this.swaggerFiles) {
       return;
@@ -134,19 +252,29 @@ class Portal {
         );
         const parsedSwagger = await this.readSwaggerFile(product.openapi);
         await SwaggerParser.validate(product.openapi);
+        const overlays = loadOverlays(product);
+        if (overlays.length > 0) {
+          console.log(
+            `Including ${overlays.length} overlay(s) for ${product.name}: ${overlays
+              .map(entry => entry.locale)
+              .join(', ')}`,
+          );
+        }
         if (!this.config.token) {
           await this.login();
         }
+        await this.assertOverlaysNotDropped(product.name, overlays);
         return this.request
           .post(
-            `api/environments/${this.config.environment}/apiproducts/${
-              product.name
-            }/specs${this.config.force ? '?force=true' : ''}`,
+            `${this.apiproductSpecsPath(product.name)}${
+              this.config.force ? '?force=true' : ''
+            }`,
             {
               spec: parsedSwagger,
               inheritSpec: false,
               permissiongroup: product.permissionGroup,
               latest: true,
+              overlays,
             },
           )
           .catch(e => {
@@ -166,18 +294,60 @@ class Portal {
         console.log(`Uploading ${category.name}`);
         const parsedSwagger = await this.readSwaggerFile(category.openapi);
         await SwaggerParser.validate(category.openapi);
+        const categoryOverlays = loadOverlays(category);
         await this.login();
-        await this.request.post(`api/specs`, {
+        await this.assertOverlaysNotDropped(
+          category.name,
+          categoryOverlays,
+          {categoryId: category.name},
+        );
+        const createdCategorySpec = await this.request.post(`api/specs`, {
           environmentId: this.config.environment,
           categoryId: category.name,
           spec: parsedSwagger,
           latest: true,
         });
 
+        // `POST /api/specs` is the generated CRUD route and does not accept
+        // overlays inline, so category overlays go up separately.
+        if (categoryOverlays.length > 0) {
+          const categorySpecId = createdCategorySpec?.data?.id;
+          if (!categorySpecId) {
+            throw new Error(
+              `Cannot upload overlays for category ${category.name}: no spec id returned`,
+            );
+          }
+          console.log(
+            `Uploading ${categoryOverlays.length} overlay(s) for category ${category.name}`,
+          );
+          try {
+            await this.request.put(`api/specs/${categorySpecId}/overlays`, {
+              overlays: categoryOverlays,
+            });
+          } catch (error) {
+            console.log(
+              `Failed to upload overlays for category ${category.name}`,
+            );
+            try {
+              await this.request.delete(`api/specs/${categorySpecId}`);
+            } catch (cleanupError) {
+              console.log(
+                `Failed to roll back category spec ${categorySpecId}: ${
+                  cleanupError instanceof Error
+                    ? cleanupError.message
+                    : String(cleanupError)
+                }`,
+              );
+            }
+            throw error;
+          }
+        }
+
         return Promise.all(
           category.products.map(async product => {
             console.log(`Uploading ${product.name}`);
             let parsedSwagger;
+            let overlays = [];
             if (product.inheritSpec === false) {
               if (!product.openapi) {
                 console.log('You have to specify spec');
@@ -185,18 +355,33 @@ class Portal {
               }
               parsedSwagger = await this.readSwaggerFile(product.openapi);
               await SwaggerParser.validate(product.openapi);
+              // Products that inherit the category spec use the category's
+              // overlays, so only own-spec products carry their own.
+              overlays = loadOverlays(product);
+              if (!this.config.token) {
+                await this.login();
+              }
+              await this.assertOverlaysNotDropped(product.name, overlays);
+            } else if (
+              Array.isArray(product.overlays) &&
+              product.overlays.length > 0
+            ) {
+              console.log(
+                `Ignoring overlays for ${product.name}: it inherits the category spec, so declare the overlays on category "${category.name}" instead`,
+              );
             }
             return this.request
               .post(
-                `api/environments/${this.config.environment}/apiproducts/${
-                  product.name
-                }/specs${this.config.force ? '?force=true' : ''}`,
+                `${this.apiproductSpecsPath(product.name)}${
+                  this.config.force ? '?force=true' : ''
+                }`,
                 {
                   spec: parsedSwagger,
                   categoryId: category.name,
                   inheritSpec: product.inheritSpec,
                   permissiongroup: product.permissionGroup,
                   latest: true,
+                  overlays,
                 },
               )
               .catch(e => {
@@ -515,6 +700,19 @@ class Portal {
     }
   }
 
+  async listApiproducts() {
+    if (!this.config.token) {
+      await this.login();
+    }
+    const response = await this.request.get(
+      `api/environments/${encodeURIComponent(
+        this.config.environment,
+      )}/apiproducts`,
+    );
+    const data = response && response.data;
+    return Array.isArray(data) ? data : [];
+  }
+
   async getProducts() {
     const products = await this.request.get(
       `api/environments/${this.config.environment}/apiproducts`,
@@ -535,7 +733,7 @@ class Portal {
       filename: 'markdown.zip',
     });
     return axios.post(
-      `https://${this.config.hostname}/markdown`,
+      this.markdownUploadUrl(),
       form.getBuffer(),
       {
         headers: {

@@ -1,0 +1,6 @@
+products:
+  - name: bad-spec
+    openapi: spec.txt
+    overlays:
+      - locale: nl-NL
+        path: overlays/nl-NL.yaml
