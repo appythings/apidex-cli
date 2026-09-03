@@ -11,10 +11,22 @@ const portal = {
   host: 'http://127.0.0.1:3000',
   environment: 'e1',
   token: 'tok',
+  checkPortal: true,
 };
 
+const checkIds = [
+  'manifest-paths',
+  'overlay-files',
+  'overlay-locales',
+  'overlay-shape',
+  'overlay-targets',
+  'required-locales',
+  'markdown-links',
+  'manifest-products',
+];
+
 describe('runValidate product checks', () => {
-  it('always loads gateway products and runs every check', async () => {
+  it('loads gateway products only with --check-portal', async () => {
     loadGatewayProducts.mockResolvedValue([
       {id: 'pet-store', name: 'pet-store'},
     ]);
@@ -26,14 +38,19 @@ describe('runValidate product checks', () => {
 
     expect(ok).toBe(true);
     expect(loadGatewayProducts).toHaveBeenCalled();
-    expect(results.map(result => result.id)).toEqual([
-      'overlay-files',
-      'overlay-locales',
-      'overlay-shape',
-      'overlay-targets',
-      'required-locales',
-      'manifest-products',
-    ]);
+    expect(results.map(result => result.id)).toEqual(checkIds);
+  });
+
+  it('skips the portal product check when --check-portal is omitted', async () => {
+    loadGatewayProducts.mockClear();
+    const {ok, results} = await runValidate({
+      manifestPath: path.join(fixtures, 'manifest-ok.yaml'),
+    });
+    expect(ok).toBe(true);
+    expect(loadGatewayProducts).not.toHaveBeenCalled();
+    expect(results.find(result => result.id === 'manifest-products').ok).toBe(
+      true,
+    );
   });
 
   it('fails when a manifest product is missing from the portal', async () => {

@@ -7,6 +7,7 @@ module.exports = {
     '<rootDir>/src/lib/formatAxiosError.js',
     '<rootDir>/src/lib/jwt.js',
     '<rootDir>/src/lib/overlays.js',
+    '<rootDir>/src/lib/product-docs.js',
     '<rootDir>/src/commands/**/*.js',
     '<rootDir>/src/devportal/portal.js',
     '<rootDir>/src/validate/**/*.js',

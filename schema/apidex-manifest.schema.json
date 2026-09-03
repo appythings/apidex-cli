@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://apidex.dev/schema/apidex-manifest.schema.json",
+  "title": "Apidex spec-repo manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "products": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/product"}
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string"},
+          "openapi": {"type": "string"},
+          "overlays": {"$ref": "#/$defs/overlays"},
+          "products": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/product"}
+          }
+        },
+        "not": {"required": ["docs"]}
+      }
+    },
+    "teams": {"type": "array"},
+    "backendTeams": {"type": "array"}
+  },
+  "$defs": {
+    "overlays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["locale", "path"],
+        "properties": {
+          "locale": {"type": "string"},
+          "path": {"type": "string"}
+        }
+      }
+    },
+    "docs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["markdown"],
+        "properties": {
+          "markdown": {"type": "string"},
+          "title": {"type": "string"},
+          "slug": {
+            "type": "string",
+            "not": {"const": "spec"}
+          },
+          "locales": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["locale", "markdown"],
+              "properties": {
+                "locale": {
+                  "type": "string",
+                  "not": {"const": "en-GB"}
+                },
+                "markdown": {"type": "string"},
+                "title": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "product": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Gateway product id/name, not catalog displayName"
+        },
+        "openapi": {"type": "string"},
+        "inheritSpec": {"type": "boolean"},
+        "permissionGroup": {"type": "string"},
+        "backendTeam": {},
+        "overlays": {"$ref": "#/$defs/overlays"},
+        "docs": {"$ref": "#/$defs/docs"}
+      }
+    }
+  }
+}

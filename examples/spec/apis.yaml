@@ -3,8 +3,9 @@
 # (catalog card "Echo v1" is product `pep-echo`).
 # pep-echo inherits the category spec (PDX-1728-style catalog join).
 #
-#   node ../../src/index.js validate apis.yaml --host ... --environment ... --token ...
-#   node ../../src/index.js validate apis.yaml --require-locales nl-NL,de-DE --host ... --environment ... --token ...
+#   node ../../src/index.js validate apis.yaml
+#   node ../../src/index.js validate apis.yaml --json
+#   node ../../src/index.js validate apis.yaml --check-portal --host ... --environment ... --token ...
 categories:
   - name: CLI category
     openapi: specs/echo.yaml
@@ -18,6 +19,17 @@ categories:
         inheritSpec: true
         permissionGroup: owners
         backendTeam: example-backend
+        docs:
+          - markdown: docs/getting-started.md
+            title: Getting started
+            slug: getting-started
+            locales:
+              - locale: nl-NL
+                markdown: docs/getting-started.nl-NL.md
+                title: Aan de slag
+          - markdown: docs/faq.md
+            title: FAQ
+            slug: faq
 teams:
   - name: example-producers
     owner: owner@example.test

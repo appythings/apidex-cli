@@ -1,5 +1,6 @@
 const axios = require('axios');
 const qs = require('qs');
+const path = require('path');
 const SwaggerParser = require('@apidevtools/swagger-parser');
 const yaml = require('js-yaml');
 const fs = require('fs-extra');
@@ -7,6 +8,7 @@ const FormData = require('form-data');
 const jwt = require('../lib/jwt');
 const {formatRequestError} = require('../lib/formatAxiosError');
 const {canonicalizeLocale, loadOverlays} = require('../lib/overlays');
+const {walkProducts, loadProductDocsForUpload} = require('../lib/product-docs');
 
 class Portal {
   /** @param {Record<string, unknown>} yml */
@@ -37,8 +39,14 @@ class Portal {
   constructor(config, manifest) {
     this.backendTeamConfig = [];
     this.backendTeamAssignments = [];
+    this.manifestDir = process.cwd();
+    this.manifestDoc = null;
     if (manifest) {
-      let yml = yaml.load(fs.readFileSync(manifest, 'utf8'));
+      const absManifest = path.resolve(manifest);
+      this.manifestPath = absManifest;
+      this.manifestDir = path.dirname(absManifest);
+      let yml = yaml.load(fs.readFileSync(absManifest, 'utf8'));
+      this.manifestDoc = yml;
       this.teamConfig = yml.teams;
       this.backendTeamConfig = Array.isArray(yml.backendTeams)
         ? yml.backendTeams
@@ -112,13 +120,23 @@ class Portal {
       'Bearer ' + response.data.access_token;
   }
 
-  readSwaggerFile(spec) {
-    const swagger = fs.readFileSync(spec, 'utf8');
+  resolveFromManifest(filePath) {
+    if (!filePath) {
+      return filePath;
+    }
+    return path.isAbsolute(filePath)
+      ? filePath
+      : path.resolve(this.manifestDir, filePath);
+  }
 
-    if (spec.endsWith('.yml') || spec.endsWith('.yaml')) {
+  readSwaggerFile(spec) {
+    const specPath = this.resolveFromManifest(spec);
+    const swagger = fs.readFileSync(specPath, 'utf8');
+
+    if (specPath.endsWith('.yml') || specPath.endsWith('.yaml')) {
       return yaml.load(swagger);
     }
-    if (spec.endsWith('.json')) {
+    if (specPath.endsWith('.json')) {
       return JSON.parse(swagger);
     }
     throw new Error('Openapi spec must be either yaml/yml or json');
@@ -251,8 +269,8 @@ class Portal {
           `Uploading ${product.openapi} for product: ${product.name}`,
         );
         const parsedSwagger = await this.readSwaggerFile(product.openapi);
-        await SwaggerParser.validate(product.openapi);
-        const overlays = loadOverlays(product);
+        await SwaggerParser.validate(this.resolveFromManifest(product.openapi));
+        const overlays = loadOverlays(product, this.manifestDir);
         if (overlays.length > 0) {
           console.log(
             `Including ${overlays.length} overlay(s) for ${product.name}: ${overlays
@@ -293,8 +311,8 @@ class Portal {
       this.categories.map(async category => {
         console.log(`Uploading ${category.name}`);
         const parsedSwagger = await this.readSwaggerFile(category.openapi);
-        await SwaggerParser.validate(category.openapi);
-        const categoryOverlays = loadOverlays(category);
+        await SwaggerParser.validate(this.resolveFromManifest(category.openapi));
+        const categoryOverlays = loadOverlays(category, this.manifestDir);
         await this.login();
         await this.assertOverlaysNotDropped(
           category.name,
@@ -354,10 +372,12 @@ class Portal {
                 return;
               }
               parsedSwagger = await this.readSwaggerFile(product.openapi);
-              await SwaggerParser.validate(product.openapi);
+              await SwaggerParser.validate(
+                this.resolveFromManifest(product.openapi),
+              );
               // Products that inherit the category spec use the category's
               // overlays, so only own-spec products carry their own.
-              overlays = loadOverlays(product);
+              overlays = loadOverlays(product, this.manifestDir);
               if (!this.config.token) {
                 await this.login();
               }
@@ -722,6 +742,53 @@ class Portal {
         swaggerFileProduct => swaggerFileProduct.name === product.name,
       ),
     );
+  }
+
+  async pushProductDocs() {
+    if (this.config.skipDocs) {
+      return;
+    }
+    if (!this.manifestDoc) {
+      return;
+    }
+    if (!this.config.token) {
+      await this.login();
+    }
+    let warnedSkip = false;
+    const tasks = [];
+    walkProducts(this.manifestDoc, product => {
+      if (!product || !Array.isArray(product.docs) || product.docs.length === 0) {
+        return;
+      }
+      tasks.push(product);
+    });
+    for (const product of tasks) {
+      const docs = loadProductDocsForUpload(product, this.manifestDir);
+      const forceQuery = this.config.forceDocs ? '?force=true' : '';
+      try {
+        const response = await this.request.post(
+          `api/cms/product-docs${forceQuery}`,
+          {
+            productId: product.name,
+            force: Boolean(this.config.forceDocs),
+            docs,
+          },
+        );
+        if (response.data && response.data.skipped === 'not-payload') {
+          if (!warnedSkip) {
+            console.log(
+              'Skipping product docs: this portal is not using Payload CMS',
+            );
+            warnedSkip = true;
+          }
+          continue;
+        }
+        console.log(`Uploaded docs tabs for ${product.name}`);
+      } catch (error) {
+        console.log(`Failed to upload docs for ${product.name}`);
+        throw error;
+      }
+    }
   }
 
   async pushMarkdown(zipFile) {

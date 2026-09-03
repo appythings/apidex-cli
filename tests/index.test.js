@@ -4,6 +4,7 @@ const {version} = require('../package.json');
 const mockRunUploadSpecCli = jest.fn().mockResolvedValue(undefined);
 const mockRunUploadMarkdownCli = jest.fn().mockResolvedValue(undefined);
 const mockRunValidateCli = jest.fn().mockResolvedValue(undefined);
+const mockRunAddDocCli = jest.fn();
 const mockArchive = {
   directory: jest.fn(),
   finalize: jest.fn(),
@@ -18,6 +19,9 @@ jest.mock('../src/commands/upload-markdown', () => ({
 }));
 jest.mock('../src/commands/validate', () => ({
   runValidateCli: (...args) => mockRunValidateCli(...args),
+}));
+jest.mock('../src/commands/add-doc', () => ({
+  runAddDocCli: (...args) => mockRunAddDocCli(...args),
 }));
 jest.mock('archiver', () => jest.fn(() => mockArchive));
 jest.mock('stream-to-promise', () =>
@@ -91,6 +95,8 @@ describe('CLI index', () => {
         tokenUrl: 'https://token.test/oauth',
         grantType: 'client_credentials',
         force: true,
+        skipDocs: false,
+        forceDocs: false,
         token: 'tok123',
       },
       manifestPath,
@@ -242,6 +248,33 @@ describe('CLI index', () => {
         scope: 'scope-val',
         tokenUrl: 'https://token.test/oauth',
         aud: 'aud-val',
+      }),
+    );
+  });
+
+  it('manifest add-doc forwards flags', async () => {
+    await parseCli(
+      'manifest',
+      'add-doc',
+      'pep-echo',
+      'docs/getting-started.md',
+      '--manifest',
+      manifestPath,
+      '--title',
+      'Getting started',
+      '--slug',
+      'getting-started',
+      '--locale',
+      'nl-NL',
+    );
+    expect(mockRunAddDocCli).toHaveBeenCalledWith(
+      expect.objectContaining({
+        product: 'pep-echo',
+        markdown: 'docs/getting-started.md',
+        manifest: manifestPath,
+        title: 'Getting started',
+        slug: 'getting-started',
+        locale: 'nl-NL',
       }),
     );
   });
