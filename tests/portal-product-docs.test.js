@@ -59,6 +59,92 @@ describe('Portal.pushProductDocs', () => {
     fs.removeSync(tmp);
   });
 
+  it('keeps default api payloads compatible with older BFFs', async () => {
+    const fs = require('fs-extra');
+    const yaml = require('js-yaml');
+    const tmp = fs.mkdtempSync(
+      require('path').join(require('os').tmpdir(), 'apidex-docs-api-'),
+    );
+    fs.writeFileSync(path.join(tmp, 'hi.md'), '# Hi\n');
+    fs.writeFileSync(
+      path.join(tmp, 'apis.yaml'),
+      yaml.dump({
+        products: [
+          {
+            name: 'api-product',
+            portalType: 'api',
+            openapi: path.join(fixtures, 'spec-min.json'),
+            docs: [{type: 'doc', markdown: 'hi.md', slug: 'hi'}],
+          },
+        ],
+      }),
+    );
+    const portal = new Portal(
+      {hostname: 'https://h', environment: 'e', token: 't'},
+      path.join(tmp, 'apis.yaml'),
+    );
+    portal.request.post = jest.fn().mockResolvedValue({data: {}});
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    await portal.pushProductDocs();
+
+    expect(portal.request.post.mock.calls[0][1]).toEqual({
+      productId: 'api-product',
+      force: false,
+      docs: [{slug: 'hi', title: 'Hi', markdown: '# Hi\n'}],
+    });
+    log.mockRestore();
+    fs.removeSync(tmp);
+  });
+
+  it('routes mcp products with portalType and ordered overview entries', async () => {
+    const fs = require('fs-extra');
+    const yaml = require('js-yaml');
+    const tmp = fs.mkdtempSync(
+      require('path').join(require('os').tmpdir(), 'apidex-docs-mcp-'),
+    );
+    fs.writeFileSync(path.join(tmp, 'hi.md'), '# Hi\n');
+    fs.writeFileSync(
+      path.join(tmp, 'apis.yaml'),
+      yaml.dump({
+        products: [
+          {
+            name: 'mcp-product',
+            portalType: 'mcp',
+            openapi: path.join(fixtures, 'spec-min.json'),
+            docs: [
+              {type: 'overview'},
+              {markdown: 'hi.md', slug: 'hi'},
+            ],
+          },
+        ],
+      }),
+    );
+    const portal = new Portal(
+      {hostname: 'https://h', environment: 'e', token: 't'},
+      path.join(tmp, 'apis.yaml'),
+    );
+    portal.request.post = jest.fn().mockResolvedValue({data: {}});
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    await portal.pushProductDocs();
+
+    expect(portal.request.post).toHaveBeenCalledWith(
+      'api/cms/product-docs',
+      {
+        productId: 'mcp-product',
+        portalType: 'mcp',
+        force: false,
+        docs: [
+          {type: 'overview'},
+          {slug: 'hi', title: 'Hi', markdown: '# Hi\n'},
+        ],
+      },
+    );
+    log.mockRestore();
+    fs.removeSync(tmp);
+  });
+
   it('warns once when Payload is not the CMS', async () => {
     const tmp = require('fs-extra').mkdtempSync(
       require('path').join(require('os').tmpdir(), 'apidex-docs-skip-'),

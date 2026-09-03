@@ -43,32 +43,50 @@
     },
     "docs": {
       "type": "array",
+      "contains": {"$ref": "#/$defs/overviewEntry"},
+      "minContains": 0,
+      "maxContains": 1,
       "items": {
-        "type": "object",
-        "required": ["markdown"],
-        "properties": {
-          "markdown": {"type": "string"},
-          "title": {"type": "string"},
-          "slug": {
-            "type": "string",
-            "not": {"const": "spec"}
-          },
-          "locales": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["locale", "markdown"],
-              "properties": {
-                "locale": {
-                  "type": "string",
-                  "not": {"const": "en-GB"}
-                },
-                "markdown": {"type": "string"},
-                "title": {"type": "string"}
-              }
+        "oneOf": [
+          {"$ref": "#/$defs/docEntry"},
+          {"$ref": "#/$defs/overviewEntry"}
+        ]
+      }
+    },
+    "docEntry": {
+      "type": "object",
+      "required": ["markdown"],
+      "properties": {
+        "type": {"const": "doc"},
+        "markdown": {"type": "string"},
+        "title": {"type": "string"},
+        "slug": {
+          "type": "string",
+          "not": {"enum": ["spec", "overview"]}
+        },
+        "locales": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["locale", "markdown"],
+            "properties": {
+              "locale": {
+                "type": "string",
+                "not": {"const": "en-GB"}
+              },
+              "markdown": {"type": "string"},
+              "title": {"type": "string"}
             }
           }
         }
+      }
+    },
+    "overviewEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {"const": "overview"}
       }
     },
     "product": {
@@ -81,6 +99,11 @@
         },
         "openapi": {"type": "string"},
         "inheritSpec": {"type": "boolean"},
+        "portalType": {
+          "type": "string",
+          "enum": ["api", "mcp"],
+          "default": "api"
+        },
         "permissionGroup": {"type": "string"},
         "backendTeam": {},
         "overlays": {"$ref": "#/$defs/overlays"},

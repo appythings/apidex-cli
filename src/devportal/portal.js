@@ -770,6 +770,7 @@ class Portal {
           `api/cms/product-docs${forceQuery}`,
           {
             productId: product.name,
+            ...(product.portalType === 'mcp' ? {portalType: 'mcp'} : {}),
             force: Boolean(this.config.forceDocs),
             docs,
           },

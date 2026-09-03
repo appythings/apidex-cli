@@ -1,6 +1,7 @@
 # Sample spec-repo manifest aimed at a local Apigee X portal.
 # `name` must be the Apigee product name, not displayName
 # (catalog card "Echo v1" is product `pep-echo`).
+# `portalType` defaults to `api`; use `mcp` for an MCP portal product.
 # pep-echo inherits the category spec (PDX-1728-style catalog join).
 #
 #   node ../../src/index.js validate apis.yaml
@@ -16,10 +17,13 @@ categories:
         path: overlays/echo-de-DE.json
     products:
       - name: pep-echo
+        portalType: api
         inheritSpec: true
         permissionGroup: owners
         backendTeam: example-backend
         docs:
+          # Place the generated API/MCP overview manually in the tab order.
+          - type: overview
           - markdown: docs/getting-started.md
             title: Getting started
             slug: getting-started

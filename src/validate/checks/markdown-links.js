@@ -49,7 +49,7 @@ module.exports = {
         return;
       }
       for (const doc of product.docs) {
-        if (!doc) {
+        if (!doc || doc.type === 'overview') {
           continue;
         }
         checkMarkdown(product, doc.markdown);

@@ -4,6 +4,11 @@ const yaml = require('js-yaml');
 const {canonicalizeLocale} = require('./overlays');
 
 const RESERVED_DOC_SLUG = 'spec';
+const RESERVED_DOC_SLUGS = new Set([RESERVED_DOC_SLUG, 'overview']);
+
+function isReservedDocSlug(slug) {
+  return RESERVED_DOC_SLUGS.has(slug);
+}
 
 function slugify(value) {
   return String(value || '')
@@ -13,6 +18,11 @@ function slugify(value) {
     .trim()
     .replace(/ /g, '-')
     .replace(/[^\w-]+/g, '');
+}
+
+function deriveDocSlug(markdownPath, explicitSlug) {
+  const fileBase = path.basename(markdownPath, path.extname(markdownPath));
+  return slugify(explicitSlug || fileBase);
 }
 
 function walkProducts(manifest, visit) {
@@ -86,11 +96,11 @@ function addDocToManifest({
   if (locale && !slug) {
     throw new Error('--locale requires --slug to select the default docs tab');
   }
-  const resolvedSlug = slugify(slug || fileBase);
-  if (!resolvedSlug || resolvedSlug === RESERVED_DOC_SLUG) {
+  const resolvedSlug = deriveDocSlug(absMd, slug);
+  if (!resolvedSlug || isReservedDocSlug(resolvedSlug)) {
     throw new Error(
-      resolvedSlug === RESERVED_DOC_SLUG
-        ? 'slug "spec" is reserved'
+      isReservedDocSlug(resolvedSlug)
+        ? `slug "${resolvedSlug}" is reserved`
         : 'Could not derive a slug; pass --slug',
     );
   }
@@ -193,6 +203,9 @@ function loadProductDocsForUpload(product, baseDir) {
     throw new Error(`"docs" for "${product.name}" must be a list`);
   }
   return declared.map(entry => {
+    if (entry && entry.type === 'overview') {
+      return {type: 'overview'};
+    }
     const mdPath = path.resolve(baseDir, entry.markdown);
     const markdown = fs.readFileSync(mdPath, 'utf8');
     const fileBase = path.basename(mdPath, path.extname(mdPath));
@@ -218,7 +231,7 @@ function loadProductDocsForUpload(product, baseDir) {
       };
     });
     return {
-      slug: entry.slug || slugify(fileBase),
+      slug: deriveDocSlug(mdPath, entry.slug),
       title: entry.title || titleFromMarkdown(markdown, fileBase),
       markdown,
       ...(locales.length > 0 ? {locales} : {}),
@@ -228,7 +241,9 @@ function loadProductDocsForUpload(product, baseDir) {
 
 module.exports = {
   RESERVED_DOC_SLUG,
+  isReservedDocSlug,
   slugify,
+  deriveDocSlug,
   walkProducts,
   findProduct,
   addDocToManifest,

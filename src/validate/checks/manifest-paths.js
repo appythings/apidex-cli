@@ -1,6 +1,10 @@
 const path = require('path');
 const fs = require('fs-extra');
-const {RESERVED_DOC_SLUG, walkProducts} = require('../../lib/product-docs');
+const {
+  deriveDocSlug,
+  isReservedDocSlug,
+  walkProducts,
+} = require('../../lib/product-docs');
 const {canonicalizeLocale} = require('../../lib/overlays');
 
 function existsFile(filePath) {
@@ -39,6 +43,13 @@ module.exports = {
     walkProducts(manifest, product => {
       if (!product) return;
       const owner = product.name || '(unnamed product)';
+      if (
+        product.portalType !== undefined &&
+        product.portalType !== 'api' &&
+        product.portalType !== 'mcp'
+      ) {
+        messages.push(`${owner}: portalType must be "api" or "mcp"`);
+      }
       if (!product.inheritSpec && product.openapi) {
         const specPath = path.resolve(baseDir, product.openapi);
         if (!existsFile(specPath)) {
@@ -49,7 +60,23 @@ module.exports = {
         messages.push(`${owner}: "docs" must be a list`);
         return;
       }
+      let overviewCount = 0;
       for (const doc of product.docs || []) {
+        if (doc && doc.type === 'overview') {
+          overviewCount += 1;
+          if (Object.keys(doc).some(key => key !== 'type')) {
+            messages.push(
+              `${owner}: overview entry must only declare type; it must not declare any other properties`,
+            );
+          }
+          continue;
+        }
+        if (doc && doc.type !== undefined && doc.type !== 'doc') {
+          messages.push(
+            `${owner}: unsupported docs entry type "${doc.type}"`,
+          );
+          continue;
+        }
         if (!doc || typeof doc.markdown !== 'string' || !doc.markdown.trim()) {
           messages.push(`${owner}: docs entry needs a markdown path`);
           continue;
@@ -58,8 +85,9 @@ module.exports = {
         if (!existsFile(mdPath)) {
           messages.push(`${owner}: docs markdown not found (${doc.markdown})`);
         }
-        if (doc.slug === RESERVED_DOC_SLUG) {
-          messages.push(`${owner}: docs slug "spec" is reserved`);
+        const resolvedSlug = deriveDocSlug(doc.markdown, doc.slug);
+        if (isReservedDocSlug(resolvedSlug)) {
+          messages.push(`${owner}: docs slug "${resolvedSlug}" is reserved`);
         }
         if (doc.locales !== undefined && !Array.isArray(doc.locales)) {
           messages.push(`${owner} ${doc.markdown}: "locales" must be a list`);
@@ -104,6 +132,9 @@ module.exports = {
             );
           }
         }
+      }
+      if (overviewCount > 1) {
+        messages.push(`${owner}: duplicate overview docs entry`);
       }
     });
 

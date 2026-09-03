@@ -178,6 +178,35 @@ describe('add-doc', () => {
     ]);
   });
 
+  it('preserves docs order and only reads files for doc entries', () => {
+    fs.writeFileSync(path.join(dir, 'last.md'), '# Last\n');
+    const loaded = loadProductDocsForUpload(
+      {
+        name: 'p',
+        docs: [
+          {markdown: 'getting-started.md', slug: 'first'},
+          {
+            type: 'overview',
+            markdown: 'must-not-be-read.md',
+            locales: [{locale: 'nl-NL', markdown: 'must-not-be-read-nl.md'}],
+          },
+          {type: 'doc', markdown: 'last.md', slug: 'last'},
+        ],
+      },
+      dir,
+    );
+
+    expect(loaded).toEqual([
+      {
+        slug: 'first',
+        title: 'Getting started',
+        markdown: '# Getting started\n\nHi.\n',
+      },
+      {type: 'overview'},
+      {slug: 'last', title: 'Last', markdown: '# Last\n'},
+    ]);
+  });
+
   it('adds a localized file to an existing docs slug', () => {
     addDocToManifest({
       manifestPath: path.join(dir, 'apis.yaml'),
@@ -241,5 +270,26 @@ describe('add-doc', () => {
         locale: 'nl-NL',
       }),
     ).toThrow(/default docs tab/);
+  });
+
+  it('keeps add-doc output backward compatible and reserves overview', () => {
+    addDocToManifest({
+      manifestPath: path.join(dir, 'apis.yaml'),
+      productName: 'pep-echo',
+      markdownPath: path.join(dir, 'getting-started.md'),
+    });
+    const manifest = yaml.load(
+      fs.readFileSync(path.join(dir, 'apis.yaml'), 'utf8'),
+    );
+    expect(findProduct(manifest, 'pep-echo').docs[0].type).toBeUndefined();
+
+    expect(() =>
+      addDocToManifest({
+        manifestPath: path.join(dir, 'apis.yaml'),
+        productName: 'pep-echo',
+        markdownPath: path.join(dir, 'getting-started.md'),
+        slug: 'overview',
+      }),
+    ).toThrow(/reserved/);
   });
 });

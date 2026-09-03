@@ -61,6 +61,116 @@ describe('manifest-paths and markdown-links', () => {
     expect(result.messages.join('\n')).toMatch(/reserved/);
   });
 
+  it('accepts api and mcp portal types and overview entries', async () => {
+    fs.writeFileSync(path.join(dir, 'ok.md'), '# Ok\n');
+    const ctx = writeManifest({
+      products: [
+        {
+          name: 'api-product',
+          portalType: 'api',
+          inheritSpec: true,
+          docs: [{type: 'doc', markdown: 'ok.md', slug: 'ok'}],
+        },
+        {
+          name: 'mcp-product',
+          portalType: 'mcp',
+          inheritSpec: true,
+          docs: [{type: 'overview'}],
+        },
+      ],
+    });
+
+    expect((await manifestPaths.run(ctx)).ok).toBe(true);
+  });
+
+  it('rejects invalid portal types and malformed discriminated docs entries', async () => {
+    fs.writeFileSync(path.join(dir, 'ok.md'), '# Ok\n');
+    const ctx = writeManifest({
+      products: [
+        {
+          name: 'bad',
+          portalType: 'website',
+          inheritSpec: true,
+          docs: [
+            {type: 'doc', slug: 'missing-markdown'},
+            {type: 'overview', markdown: 'ok.md'},
+            {type: 'other', markdown: 'ok.md'},
+          ],
+        },
+      ],
+    });
+
+    const result = await manifestPaths.run(ctx);
+    expect(result.messages.join('\n')).toMatch(/portalType.*api.*mcp/);
+    expect(result.messages.join('\n')).toMatch(/docs entry needs a markdown path/);
+    expect(result.messages.join('\n')).toMatch(/overview.*must not declare/);
+    expect(result.messages.join('\n')).toMatch(/unsupported docs entry type "other"/);
+  });
+
+  it('reserves overview slugs and rejects duplicate overview entries', async () => {
+    fs.writeFileSync(path.join(dir, 'ok.md'), '# Ok\n');
+    const ctx = writeManifest({
+      products: [
+        {
+          name: 'p',
+          inheritSpec: true,
+          docs: [
+            {markdown: 'ok.md', slug: 'overview'},
+            {type: 'overview'},
+            {type: 'overview'},
+          ],
+        },
+      ],
+    });
+
+    const result = await manifestPaths.run(ctx);
+    expect(result.messages.join('\n')).toMatch(/slug "overview" is reserved/);
+    expect(result.messages.join('\n')).toMatch(/duplicate overview/);
+  });
+
+  it.each([
+    ['Spéc!.md', 'spec'],
+    ['Overview.md', 'overview'],
+  ])(
+    'rejects omitted slugs when %s derives the reserved slug %s',
+    async (markdown, derivedSlug) => {
+      fs.writeFileSync(path.join(dir, markdown), '# Reserved\n');
+      const ctx = writeManifest({
+        products: [
+          {
+            name: 'p',
+            inheritSpec: true,
+            docs: [{markdown}],
+          },
+        ],
+      });
+
+      const result = await manifestPaths.run(ctx);
+
+      expect(result.messages).toContain(
+        `p: docs slug "${derivedSlug}" is reserved`,
+      );
+    },
+  );
+
+  it('rejects every overview property except type', async () => {
+    const ctx = writeManifest({
+      products: [
+        {
+          name: 'p',
+          inheritSpec: true,
+          docs: [{type: 'overview', unexpected: true}],
+        },
+      ],
+    });
+
+    const result = await manifestPaths.run(ctx);
+
+    expect(result.messages.join('\n')).toMatch(
+      /overview entry must only declare type/,
+    );
+  });
+
   it('fails broken relative markdown links and empty hrefs', async () => {
     fs.writeFileSync(
       path.join(dir, 'page.md'),
@@ -232,5 +342,25 @@ describe('manifest-paths and markdown-links', () => {
     });
     const result = await markdownLinks.run(ctx);
     expect(result.ok).toBe(true);
+  });
+
+  it('skips markdown fields attached to malformed overview entries', async () => {
+    const ctx = writeManifest({
+      products: [
+        {
+          name: 'pet-store',
+          inheritSpec: true,
+          docs: [
+            {
+              type: 'overview',
+              markdown: 'missing.md',
+              locales: [{locale: 'nl-NL', markdown: 'missing-nl.md'}],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect((await markdownLinks.run(ctx)).ok).toBe(true);
   });
 });
