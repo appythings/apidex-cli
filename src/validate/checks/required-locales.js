@@ -1,4 +1,5 @@
 const {canonicalizeLocale} = require('../../lib/overlays');
+const {skipNonOpenapiOverlays} = require('../skip-mcp-overlays');
 
 module.exports = {
   id: 'required-locales',
@@ -11,6 +12,7 @@ module.exports = {
     const wanted = required.map(locale => canonicalizeLocale(locale) || locale);
     for (const entry of ctx.entries) {
       if (entry.inheritSpec) continue;
+      if (skipNonOpenapiOverlays(entry)) continue;
       if (!entry.specPath && entry.kind === 'product') continue;
       const present = new Set(
         entry.overlays

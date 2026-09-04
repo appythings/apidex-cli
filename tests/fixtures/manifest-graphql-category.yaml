@@ -1,0 +1,8 @@
+categories:
+  - name: CLI GraphQL category
+    spec: echo-graphql.json
+    portalType: graphql
+    products:
+      - name: pep-graphql
+        portalType: graphql
+        inheritSpec: true

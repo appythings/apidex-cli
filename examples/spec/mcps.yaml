@@ -1,0 +1,15 @@
+# MCP-only copy-paste kit. `name` is the gateway product id, not displayName.
+# `spec:` points at a tools-catalogue document (not OpenAPI). Overlays are not allowed.
+#
+#   node ../../src/index.js validate mcps.yaml
+#   node ../../src/index.js upload-spec mcps.yaml --host ... --environment ... --token ...
+categories:
+  - name: CLI MCP category
+    spec: specs/echo-mcp.json
+    products:
+      - name: pep-mcp
+        portalType: mcp
+        inheritSpec: true
+        permissionGroup: owners
+        docs:
+          - type: overview

@@ -1,7 +1,7 @@
 # apidex-cli
 Commandline tool to use the management APIs of Apidex
 
-Supports **OpenAPI 3.0.x and 3.1.x** (including JSON Schema 2020-12 features). Specs are validated locally before upload and again by the Apidex backend. Requires **Node.js >= 18**.
+Supports **OpenAPI 3.0.x and 3.1.x** (including JSON Schema 2020-12 features), **MCP tools-catalogue** specs (`portalType: mcp`), and **GraphQL v1 envelopes** (`portalType: graphql`). Specs are validated locally by `validate` and `upload-spec`. OpenAPI and GraphQL are checked again by the Apidex backend. Requires **Node.js >= 18**.
 
 ## Installation
 ```npm i -g @appythings/apidex-cli```
@@ -11,7 +11,8 @@ To upload your API's to apidex, create a yaml file with the following content:
 ```
 products:
   - name: ID-of-the-API # For SAP and Apigee this is the name of the product, not the displayName
-    openapi: swagger.json # link to an openapi spec in yaml or json format
+    openapi: swagger.json # OpenAPI file (yaml or json). Use spec: for MCP or GraphQL.
+    portalType: api # api (default), mcp, or graphql
     permissionGroup: owners # Permission group that is allowed access to this product (optional)
     overlays: # optional: per-locale OpenAPI Overlay 1.x documents, see "Per-locale OpenAPI overlays"
       - locale: nl-NL
@@ -26,11 +27,30 @@ categories: # You can also bundle multiple products in a category
       - name: ID-of-the-API
         inheritSpec: true # You can choose to let the product inherit the spec from the category
         permissionGroup: owners # Permission group that is allowed access to this product (optional)
+        docs: # optional: Payload product tabs (markdown files relative to this YAML)
+          - markdown: docs/getting-started.md
+            title: Getting started
+            slug: getting-started
+            locales: # optional translations of the same tab; en-GB stays above
+              - locale: nl-NL
+                markdown: docs/getting-started.nl-NL.md
+                title: Aan de slag # optional: defaults to first markdown H1
       - name: ID-of-the-API
         inheritSpec: false
         openapi: swagger.json # Or the product will have it's own spec
         permissionGroup: owners # Permission group that is allowed access to this product (optional)
         backendTeam: backend-squad # optional: assign this API product to a backend team (by team name)
+products:
+  - name: ID-of-the-GraphQL # Gateway product id/name. GraphQL is product-only.
+    spec: graphql-envelope.json # v1 envelope (document + optional execution). Do not also set openapi.
+    portalType: graphql
+    docs:
+      - type: overview
+  - name: ID-of-the-MCP # Gateway product id/name
+    spec: mcp-tools.json # tools-catalogue JSON (or yaml). Do not also set openapi.
+    portalType: mcp # required so validate/upload use the MCP adapter
+    docs:
+      - type: overview
 teams: # optional: producer teams (teamType normal)
   - name: team-name
     owner: owner@test.com
@@ -46,7 +66,7 @@ Run:
 ```
 apidex-cli upload-spec [options] <manifest>
 
-uploads an openapi spec to apidex (OpenAPI 3.0.x or 3.1.x)
+uploads an OpenAPI, MCP, or GraphQL spec to apidex
 
 Options:
   --environment <environment>    add the environment to deploy this to
@@ -57,17 +77,21 @@ Options:
   --scope <scope>                add the scope for the developer portal app registration
   --tokenUrl <tokenUrl>          add the tokenUrl from your OpenID Connect provider (ex: https://login.microsoftonline.com/yourcompany.onmicrosoft.com/oauth2/v2.0/token)
   --force                        Force the database to overwrite spec regardless of version number (default: false)
+  --skip-docs                    Skip pushing product docs tabs to Payload
+  --force-docs                   Overwrite Payload docs tabs after CMS admin edits
   --token <token>                provide a token instead
   -h, --help                     display help for command
 ```
 
 ```
-apidex-cli validate [manifest] [--require-locales <list>]
+apidex-cli validate [manifest] [--require-locales <list>] [--json] [--check-portal]
 
-validate OpenAPI overlay files and that manifest API products exist in the portal
+validate OpenAPI, MCP, and GraphQL spec documents, overlay files, YAML/markdown paths, and relative links in docs (offline)
 
 Options:
   --require-locales <list>  comma-separated locales every non-inherited spec must declare overlays for
+  --json                    print check results as JSON
+  --check-portal            also match manifest product names against the portal (needs host/env/token)
   --host <host>             portal hostname (or APIDEX_HOST)
   --environment <id>        portal environment id (or APIDEX_ENVIRONMENT)
   --token <token>           portal token (or APIDEX_TOKEN)
@@ -79,7 +103,21 @@ Options:
   -h, --help                display help for command
 ```
 
-Same binary as `upload-spec`. Spec-repo CI needs portal credentials: `validate` always lists `GET /api/environments/{id}/apiproducts` and matches manifest product `name` to gateway product **name or id**, not displayName. Auth is `--token` or the same client credentials as `upload-spec`. Overlay checks still run if that call fails. A settings file that supplies a default manifest path and required locales is coming later; until then pass the manifest path (and `--require-locales` when you want that gate). Runnable samples: [`examples/`](./examples/).
+Same binary as `upload-spec`. `validate` is a laptop linter by default (no token). Overlay, OpenAPI, `docs[].markdown`, and `docs[].locales[].markdown` paths are relative to the manifest file. Localized docs use the same locale tags as overlays; the top-level markdown is `en-GB`, and each `locales[]` entry translates the same tab and slug. `--check-portal` lists `GET /api/environments/{id}/apiproducts` and matches manifest product `name` to gateway product **name or id**, not displayName. Runnable samples: [`examples/`](./examples/). Agent notes: [`AGENTS.md`](./AGENTS.md). Schema: [`schema/apidex-manifest.schema.json`](./schema/apidex-manifest.schema.json).
+
+```
+apidex-cli manifest add-doc <product> <markdown> --manifest <apis.yaml> [--title] [--slug] [--locale] [--update]
+
+add a product docs tab to the manifest (flags only, no wizard)
+```
+
+Add the default `en-GB` tab first. To attach or update a translation, select
+that tab with `--slug`:
+
+```
+apidex-cli manifest add-doc pep-echo docs/getting-started.nl-NL.md \
+  --manifest apis.yaml --slug getting-started --locale nl-NL
+```
 
 ```
 apidex-cli upload-markdown [options] <directory>
@@ -124,6 +162,21 @@ Coverage thresholds are enforced in `jest.config.js`: 90% global minimum, with h
 - Paths-less / webhooks-only 3.1 documents are not supported by all portal features; include `paths` for REST APIs.
 - See [CHANGELOG.md](./CHANGELOG.md) for release details.
 
+### MCP tools catalogues
+
+- Point at the file with `spec:` (or keep `openapi:` for REST). Do not set both.
+- Set `portalType: mcp`. The CLI validates a tools-catalogue document (`tools[]`, unique tool names, optional `resources` / `prompts`) and POSTs `apiStyle: mcp` before the spec.
+- Overlays are OpenAPI-only. Declaring `overlays` on an MCP product or category fails `validate` / `upload-spec`.
+- Category + `inheritSpec` works the same as OpenAPI. See [`examples/spec/mcps.yaml`](./examples/spec/mcps.yaml) for a copy-paste kit.
+
+### GraphQL envelopes
+
+- Point at the file with `spec:`. Do not also set `openapi`.
+- Set `portalType: graphql`. The file must be a v1 upload envelope (`document.kind: graphql`, `schemaVersion: 1`, semver `info.version`, SDL `schema`).
+- GraphQL is product-only: no category spec and no `inheritSpec`.
+- Overlays are OpenAPI-only.
+- The CLI POSTs `apiStyle: graphql` before the spec. See [`examples/spec/graphqls.yaml`](./examples/spec/graphqls.yaml).
+
 ### Per-locale OpenAPI overlays
 
 The portal applies a full [OpenAPI Overlay 1.x](https://spec.openapis.org/overlay/v1.1.0.html)
@@ -151,15 +204,10 @@ products:
   different casing (`NL-nl`) resolves to the canonical tag. An unsupported
   locale fails the upload rather than being silently dropped.
 - `path` points at a `.yaml`, `.yml`, or `.json` overlay document, resolved
-  relative to where you run the CLI.
+  relative to the manifest file.
 - One entry per locale — a duplicate locale fails the upload.
 
-Run `apidex-cli validate apis.yaml` with `--host`, `--environment`, and either
-`--token` or client credentials (`--clientId`, `--tokenUrl`, `--clientSecret`)
-before `upload-spec` so unmatched JSONPath targets, missing overlay files, and
-unknown API products fail in CI instead of at upload time. CI that requires a
-full set of translations should also pass `--require-locales nl-NL,de-DE` (or
-the locales you ship); the flag stays opt-in.
+Run `apidex-cli validate apis.yaml` before `upload-spec`. Add `--check-portal` with `--host`, `--environment`, and either `--token` or client credentials when CI should also fail on unknown API products. CI that requires a full set of translations should also pass `--require-locales nl-NL,de-DE` (or the locales you ship); the flag stays opt-in.
 
 #### Writing an overlay
 

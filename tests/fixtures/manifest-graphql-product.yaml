@@ -1,0 +1,5 @@
+products:
+  - name: pep-graphql
+    spec: echo-graphql.json
+    portalType: graphql
+    permissionGroup: owners

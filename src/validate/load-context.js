@@ -2,16 +2,23 @@ const path = require('path');
 const fs = require('fs-extra');
 const yaml = require('js-yaml');
 const {readOverlayFile} = require('../lib/overlays');
+const {specPath, portalType} = require('../lib/spec-ref');
+const {parseSpecFile} = require('../lib/spec-file');
 
-function readSpecFile(specPath) {
-  const raw = fs.readFileSync(specPath, 'utf8');
-  if (/\.(yml|yaml)$/.test(specPath)) {
-    return yaml.load(raw);
-  }
-  if (specPath.endsWith('.json')) {
-    return JSON.parse(raw);
-  }
-  throw new Error(`Spec ${specPath} must be yaml/yml or json`);
+function toEntry(owner, kind, inheritSpec, baseDir) {
+  const ref = specPath(owner, baseDir);
+  return {
+    kind,
+    name: owner && owner.name,
+    specPath: ref.path,
+    specField: ref.field,
+    specRefError: ref.error,
+    spec: undefined,
+    specError: undefined,
+    inheritSpec: Boolean(inheritSpec),
+    portalType: portalType(owner),
+    overlays: loadOverlayEntries(owner, baseDir),
+  };
 }
 
 function loadOverlayEntries(owner, baseDir) {
@@ -53,45 +60,27 @@ function collectEntries(manifest, baseDir) {
   const entries = [];
   if (Array.isArray(manifest.products)) {
     for (const product of manifest.products) {
-      entries.push({
-        kind: 'product',
-        name: product.name,
-        specPath: product.openapi
-          ? path.resolve(baseDir, product.openapi)
-          : undefined,
-        spec: undefined,
-        specError: undefined,
-        inheritSpec: Boolean(product.inheritSpec),
-        overlays: loadOverlayEntries(product, baseDir),
-      });
+      if (!product) continue;
+      entries.push(
+        toEntry(product, 'product', Boolean(product.inheritSpec), baseDir),
+      );
     }
   }
   if (Array.isArray(manifest.categories)) {
     for (const category of manifest.categories) {
-      entries.push({
-        kind: 'category',
-        name: category.name,
-        specPath: category.openapi
-          ? path.resolve(baseDir, category.openapi)
-          : undefined,
-        spec: undefined,
-        specError: undefined,
-        inheritSpec: false,
-        overlays: loadOverlayEntries(category, baseDir),
-      });
+      if (!category) continue;
+      entries.push(toEntry(category, 'category', false, baseDir));
       if (Array.isArray(category.products)) {
         for (const product of category.products) {
-          entries.push({
-            kind: 'product',
-            name: product.name,
-            specPath: product.openapi
-              ? path.resolve(baseDir, product.openapi)
-              : undefined,
-            spec: undefined,
-            specError: undefined,
-            inheritSpec: Boolean(product.inheritSpec),
-            overlays: loadOverlayEntries(product, baseDir),
-          });
+          if (!product) continue;
+          entries.push(
+            toEntry(
+              product,
+              'product',
+              Boolean(product.inheritSpec),
+              baseDir,
+            ),
+          );
         }
       }
     }
@@ -107,7 +96,7 @@ function loadContext(options) {
   for (const entry of entries) {
     if (entry.inheritSpec || !entry.specPath) continue;
     try {
-      entry.spec = readSpecFile(entry.specPath);
+      entry.spec = parseSpecFile(entry.specPath);
     } catch (error) {
       entry.specError = error instanceof Error ? error.message : String(error);
     }

@@ -58,6 +58,26 @@ describe('Portal', () => {
     });
   });
 
+  describe('spec helpers', () => {
+    it('throws when loadAndValidateSpec has no file pointer', async () => {
+      const portal = new Portal({hostname: 'h', token: 't'});
+      await expect(portal.loadAndValidateSpec({name: 'empty'})).rejects.toThrow(
+        /declare spec or openapi/,
+      );
+    });
+
+    it('throws when loadAndValidateSpec sees both pointers', async () => {
+      const portal = new Portal({hostname: 'h', token: 't'});
+      await expect(
+        portal.loadAndValidateSpec({
+          name: 'both',
+          spec: 'a.json',
+          openapi: 'b.yaml',
+        }),
+      ).rejects.toThrow(/not both/);
+    });
+  });
+
   describe('readSwaggerFile', () => {
     it('throws for unsupported extensions without reading disk', () => {
       const readSpy = jest
@@ -517,6 +537,201 @@ describe('Portal', () => {
       expect(portal.request.post).not.toHaveBeenCalled();
     });
 
+    it('throws when spec and openapi are both declared', () => {
+      expect(
+        () =>
+          new Portal(
+            {hostname: 'https://portal.test', environment: 'e1', token: 't'},
+            path.join(fixtures, 'manifest-both-spec-fields.yaml'),
+          ),
+      ).toThrow(/declare spec or openapi, not both/);
+    });
+
+    it('refuses MCP overlays on upload', async () => {
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        path.join(fixtures, 'manifest-mcp-overlays.yaml'),
+      );
+      await expect(portal.pushSwagger()).rejects.toThrow(
+        /overlays are not supported for portalType mcp/,
+      );
+    });
+
+    it('sets apiStyle after a product list failure', async () => {
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        path.join(fixtures, 'manifest-mcp-product.yaml'),
+      );
+      portal.listApiproducts = jest.fn().mockRejectedValue(new Error('down'));
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+      await portal.pushSwagger();
+      expect(portal.request.post.mock.calls[0][0]).toMatch(/apistyle/);
+    });
+
+    it('accepts a spec-only MCP product in the constructor', () => {
+      expect(
+        () =>
+          new Portal(
+            {hostname: 'https://portal.test', environment: 'e1', token: 't'},
+            path.join(fixtures, 'manifest-mcp-product.yaml'),
+          ),
+      ).not.toThrow();
+    });
+
+    it('uploads an MCP tools catalogue and sets apiStyle first', async () => {
+      const mf = path.join(fixtures, 'manifest-mcp-product.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+
+      await portal.pushSwagger();
+
+      expect(portal.request.post.mock.calls[0][0]).toBe(
+        'api/environments/e1/apiproducts/pep-mcp/apistyle',
+      );
+      expect(portal.request.post.mock.calls[0][1]).toEqual({apiStyle: 'mcp'});
+      expect(portal.request.post).toHaveBeenCalledWith(
+        'api/environments/e1/apiproducts/pep-mcp/specs',
+        expect.objectContaining({
+          inheritSpec: false,
+          latest: true,
+          overlays: [],
+          spec: expect.objectContaining({
+            tools: [expect.objectContaining({name: 'echo'})],
+          }),
+        }),
+      );
+    });
+
+    it('uploads a GraphQL envelope and sets apiStyle first', async () => {
+      const mf = path.join(fixtures, 'manifest-graphql-product.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+
+      await portal.pushSwagger();
+
+      expect(portal.request.post.mock.calls[0][0]).toBe(
+        'api/environments/e1/apiproducts/pep-graphql/apistyle',
+      );
+      expect(portal.request.post.mock.calls[0][1]).toEqual({
+        apiStyle: 'graphql',
+      });
+      expect(portal.request.post).toHaveBeenCalledWith(
+        'api/environments/e1/apiproducts/pep-graphql/specs',
+        expect.objectContaining({
+          inheritSpec: false,
+          latest: true,
+          overlays: [],
+          spec: expect.objectContaining({
+            document: expect.objectContaining({kind: 'graphql'}),
+          }),
+        }),
+      );
+    });
+
+    it('skips apistyle when the product is already graphql', async () => {
+      const mf = path.join(fixtures, 'manifest-graphql-product.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({
+        data: [{name: 'pep-graphql', id: 'pep-graphql', apiStyle: 'graphql'}],
+      });
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+
+      await portal.pushSwagger();
+
+      expect(
+        portal.request.post.mock.calls.some(([url]) =>
+          String(url).includes('/apistyle'),
+        ),
+      ).toBe(false);
+    });
+
+    it('refuses GraphQL overlays and category inherit', async () => {
+      const overlays = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        path.join(fixtures, 'manifest-graphql-overlays.yaml'),
+      );
+      await expect(overlays.pushSwagger()).rejects.toThrow(
+        /overlays are not supported for portalType graphql/,
+      );
+
+      const category = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        path.join(fixtures, 'manifest-graphql-category.yaml'),
+      );
+      await expect(category.pushCategories()).rejects.toThrow(
+        /portalType graphql is product-only/,
+      );
+    });
+
+    it('skips apistyle when the product is already mcp', async () => {
+      const mf = path.join(fixtures, 'manifest-mcp-product.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({
+        data: [{name: 'pep-mcp', id: 'pep-mcp', apiStyle: 'mcp'}],
+      });
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+
+      await portal.pushSwagger();
+
+      expect(
+        portal.request.post.mock.calls.some(([url]) =>
+          String(url).includes('/apistyle'),
+        ),
+      ).toBe(false);
+      expect(portal.request.post).toHaveBeenCalledWith(
+        'api/environments/e1/apiproducts/pep-mcp/specs',
+        expect.objectContaining({
+          spec: expect.objectContaining({tools: expect.any(Array)}),
+        }),
+      );
+    });
+
     it('uploads openapi for each manifest product', async () => {
       const mf = path.join(fixtures, 'manifest-products-only.yaml');
       const portal = new Portal(
@@ -744,6 +959,57 @@ describe('Portal', () => {
         ([u]) => String(u) === 'api/specs',
       );
       expect(categorySpecUploads).toHaveLength(0);
+    });
+
+    it('rejects mixed inherit portalTypes on a category', async () => {
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        path.join(fixtures, 'manifest-mcp-mixed-inherit.yaml'),
+      );
+      await expect(portal.pushCategories()).rejects.toThrow(
+        /inheriting products must share one portalType/,
+      );
+    });
+
+    it('uploads an MCP category spec then inherit rows', async () => {
+      const yamlPath = path.join(fixtures, 'manifest-mcp-category.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 'tok',
+        },
+        yamlPath,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({data: {id: 'cat-1'}});
+
+      await portal.pushCategories();
+
+      expect(portal.request.post).toHaveBeenCalledWith(
+        'api/specs',
+        expect.objectContaining({
+          categoryId: 'CLI MCP category',
+          spec: expect.objectContaining({
+            tools: [expect.objectContaining({name: 'echo'})],
+          }),
+        }),
+      );
+      expect(portal.request.post).toHaveBeenCalledWith(
+        'api/environments/e1/apiproducts/pep-mcp/apistyle',
+        {apiStyle: 'mcp'},
+      );
+      expect(portal.request.post).toHaveBeenCalledWith(
+        'api/environments/e1/apiproducts/pep-mcp/specs',
+        expect.objectContaining({
+          inheritSpec: true,
+          categoryId: 'CLI MCP category',
+        }),
+      );
     });
 
     it('skips openapi read when inheritSpec implies no openapi', async () => {

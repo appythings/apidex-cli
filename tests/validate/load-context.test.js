@@ -55,6 +55,33 @@ describe('loadContext', () => {
     expect(ctx.entries[0].specError).toMatch(/yaml\/yml or json/);
   });
 
+  it('loads a spec field the same way as openapi', () => {
+    const dir = require('fs-extra').mkdtempSync(
+      require('path').join(require('os').tmpdir(), 'apidex-spec-field-'),
+    );
+    const fs = require('fs-extra');
+    const yaml = require('js-yaml');
+    fs.writeFileSync(
+      path.join(dir, 'echo-mcp.json'),
+      JSON.stringify({tools: [{name: 'echo'}]}),
+    );
+    const manifestPath = path.join(dir, 'mcps.yaml');
+    fs.writeFileSync(
+      manifestPath,
+      yaml.dump({
+        products: [
+          {name: 'mcp-product', spec: 'echo-mcp.json', portalType: 'mcp'},
+        ],
+      }),
+    );
+    const ctx = loadContext({manifestPath, requireLocales: []});
+    expect(ctx.entries[0].specPath).toBe(path.join(dir, 'echo-mcp.json'));
+    expect(ctx.entries[0].specField).toBe('spec');
+    expect(ctx.entries[0].portalType).toBe('mcp');
+    expect(ctx.entries[0].spec.tools[0].name).toBe('echo');
+    fs.removeSync(dir);
+  });
+
   it('loads a category-only manifest and a product without openapi', () => {
     const categoryOnly = loadContext({
       manifestPath: path.join(fixtures, 'manifest-category-only.yaml'),
@@ -68,6 +95,37 @@ describe('loadContext', () => {
       requireLocales: [],
     });
     expect(noOpenapi.entries[0].specPath).toBeUndefined();
+  });
+
+  it('skips null categories and products when collecting entries', () => {
+    const dir = require('fs-extra').mkdtempSync(
+      require('path').join(require('os').tmpdir(), 'apidex-null-entries-'),
+    );
+    const fs = require('fs-extra');
+    const yaml = require('js-yaml');
+    const manifestPath = path.join(dir, 'apis.yaml');
+    fs.writeFileSync(path.join(dir, 'echo.yaml'), 'openapi: "3.0.2"\n');
+    fs.writeFileSync(
+      manifestPath,
+      yaml.dump({
+        products: [null, {name: 'top', openapi: 'echo.yaml'}],
+        categories: [
+          null,
+          {
+            name: 'cat',
+            openapi: 'echo.yaml',
+            products: [null, {name: 'nested', inheritSpec: true}],
+          },
+        ],
+      }),
+    );
+    const ctx = loadContext({manifestPath, requireLocales: []});
+    expect(ctx.entries.map(entry => entry.name)).toEqual([
+      'top',
+      'cat',
+      'nested',
+    ]);
+    fs.removeSync(dir);
   });
 
   it('treats an empty manifest file as an empty document', () => {

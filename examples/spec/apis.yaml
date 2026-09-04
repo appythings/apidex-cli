@@ -1,10 +1,12 @@
 # Sample spec-repo manifest aimed at a local Apigee X portal.
 # `name` must be the Apigee product name, not displayName
 # (catalog card "Echo v1" is product `pep-echo`).
+# `portalType` defaults to `api`; use `mcp` or `graphql` for those catalogues.
 # pep-echo inherits the category spec (PDX-1728-style catalog join).
 #
-#   node ../../src/index.js validate apis.yaml --host ... --environment ... --token ...
-#   node ../../src/index.js validate apis.yaml --require-locales nl-NL,de-DE --host ... --environment ... --token ...
+#   node ../../src/index.js validate apis.yaml
+#   node ../../src/index.js validate apis.yaml --json
+#   node ../../src/index.js validate apis.yaml --check-portal --host ... --environment ... --token ...
 categories:
   - name: CLI category
     openapi: specs/echo.yaml
@@ -15,9 +17,39 @@ categories:
         path: overlays/echo-de-DE.json
     products:
       - name: pep-echo
+        portalType: api
         inheritSpec: true
         permissionGroup: owners
         backendTeam: example-backend
+        docs:
+          # Place the generated API/MCP overview manually in the tab order.
+          - type: overview
+          - markdown: docs/getting-started.md
+            title: Getting started
+            slug: getting-started
+            locales:
+              - locale: nl-NL
+                markdown: docs/getting-started.nl-NL.md
+                title: Aan de slag
+          - markdown: docs/faq.md
+            title: FAQ
+            slug: faq
+  - name: CLI MCP category
+    spec: specs/echo-mcp.json
+    products:
+      - name: pep-mcp
+        portalType: mcp
+        inheritSpec: true
+        permissionGroup: owners
+        docs:
+          - type: overview
+products:
+  - name: pep-graphql
+    spec: specs/countries-envelope.json
+    portalType: graphql
+    permissionGroup: owners
+    docs:
+      - type: overview
 teams:
   - name: example-producers
     owner: owner@example.test

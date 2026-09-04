@@ -1,7 +1,7 @@
 const {runValidate} = require('../validate');
 
 /**
- * @param {{manifestPath?: string, requireLocales?: string, host?: string, environment?: string, token?: string, clientId?: string, clientSecret?: string, aud?: string, scope?: string, tokenUrl?: string}} argv
+ * @param {{manifestPath?: string, requireLocales?: string, host?: string, environment?: string, token?: string, clientId?: string, clientSecret?: string, aud?: string, scope?: string, tokenUrl?: string, checkPortal?: boolean, json?: boolean}} argv
  * @param {{ log?: (msg: string) => void, exit?: (code: number) => void }} [deps]
  */
 async function runValidateCli(argv, deps = {}) {
@@ -9,13 +9,17 @@ async function runValidateCli(argv, deps = {}) {
   const exit = deps.exit || (code => process.exit(code));
   try {
     const {ok, results} = await runValidate(argv);
-    for (const result of results) {
-      if (result.ok) {
-        log(`ok ${result.id}`);
-      } else {
-        log(`FAIL ${result.id}`);
-        for (const message of result.messages) {
-          log(`  ${message}`);
+    if (argv.json) {
+      log(JSON.stringify({ok, results}));
+    } else {
+      for (const result of results) {
+        if (result.ok) {
+          log(`ok ${result.id}`);
+        } else {
+          log(`FAIL ${result.id}`);
+          for (const message of result.messages) {
+            log(`  ${message}`);
+          }
         }
       }
     }

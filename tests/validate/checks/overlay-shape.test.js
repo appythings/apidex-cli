@@ -16,6 +16,32 @@ jest.mock('../../../src/lib/overlays', () => {
 const fixtures = path.join(__dirname, '../../fixtures/validate');
 
 describe('overlay-shape check', () => {
+  it('skips overlay shape checks for mcp products', async () => {
+    const result = await overlayShape.run({
+      entries: [
+        {
+          name: 'mcp-product',
+          portalType: 'mcp',
+          overlays: [{overlay: {not: 'an overlay'}}],
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('skips overlay shape checks for graphql products', async () => {
+    const result = await overlayShape.run({
+      entries: [
+        {
+          name: 'gql-product',
+          portalType: 'graphql',
+          overlays: [{overlay: {not: 'an overlay'}}],
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('fails an overlay that is missing a target', async () => {
     const ctx = loadContext({
       manifestPath: path.join(fixtures, 'manifest-bad-shape.yaml'),

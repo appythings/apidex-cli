@@ -1,0 +1,17 @@
+{
+  "document": {
+    "kind": "graphql",
+    "schemaVersion": 1,
+    "info": {
+      "title": "Echo GraphQL",
+      "version": "1.0.0"
+    },
+    "schema": "type Query { hello: String }"
+  },
+  "execution": {
+    "endpoint": "https://example.com/graphql",
+    "auth": {
+      "type": "none"
+    }
+  }
+}

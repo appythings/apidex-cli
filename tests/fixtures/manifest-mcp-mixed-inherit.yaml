@@ -1,0 +1,10 @@
+categories:
+  - name: mixed
+    spec: echo-mcp.json
+    products:
+      - name: api-child
+        portalType: api
+        inheritSpec: true
+      - name: mcp-child
+        portalType: mcp
+        inheritSpec: true

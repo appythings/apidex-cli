@@ -34,6 +34,9 @@ describe('runUploadSpec', () => {
       assignBackendTeamsFromManifest: jest.fn(async () => {
         order.push('assign');
       }),
+      pushProductDocs: jest.fn(async () => {
+        order.push('docs');
+      }),
       backendTeamConfig: [],
       backendTeamAssignments: [],
     };
@@ -53,6 +56,7 @@ describe('runUploadSpec', () => {
       'swagger-end',
       'backend',
       'assign',
+      'docs',
     ]);
     const logs = console.log.mock.calls.flat().join('\n');
     expect(logs).not.toContain('Successfully updated backend teams');
@@ -68,6 +72,7 @@ describe('runUploadSpec', () => {
       pushTeams: jest.fn().mockResolvedValue(),
       pushBackendTeams: jest.fn().mockResolvedValue(),
       assignBackendTeamsFromManifest: jest.fn().mockResolvedValue(),
+      pushProductDocs: jest.fn().mockResolvedValue(),
       backendTeamConfig: [],
       backendTeamAssignments: [],
     };
@@ -84,6 +89,7 @@ describe('runUploadSpec', () => {
       pushTeams: jest.fn().mockResolvedValue(),
       pushBackendTeams: jest.fn().mockResolvedValue(),
       assignBackendTeamsFromManifest: jest.fn().mockResolvedValue(),
+      pushProductDocs: jest.fn().mockResolvedValue(),
       backendTeamConfig: [{name: 'b'}],
       backendTeamAssignments: [{productName: 'p', backendTeam: 'b'}],
     };

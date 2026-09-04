@@ -1,0 +1,7 @@
+products:
+  - name: pep-graphql
+    spec: echo-graphql.json
+    portalType: graphql
+    overlays:
+      - locale: nl-NL
+        path: overlay.yaml

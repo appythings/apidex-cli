@@ -1,0 +1,19 @@
+{
+  "document": {
+    "kind": "graphql",
+    "schemaVersion": 1,
+    "info": {
+      "title": "Countries API (local test)",
+      "version": "1.0.0",
+      "description": "Minimal GraphQL envelope for local CLI smoke tests."
+    },
+    "schema": "type Query {\n  \"\"\"List countries (public demo API).\"\"\"\n  countries: [Country!]!\n  country(code: ID!): Country\n}\n\ntype Country {\n  code: ID!\n  name: String!\n  emoji: String\n  capital: String\n}\n",
+    "initialQuery": "query ListCountries {\n  countries {\n    code\n    name\n    emoji\n  }\n}\n"
+  },
+  "execution": {
+    "endpoint": "https://countries.trevorblades.com/graphql",
+    "auth": {
+      "type": "none"
+    }
+  }
+}
