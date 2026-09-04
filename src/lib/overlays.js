@@ -1,5 +1,6 @@
 const yaml = require('js-yaml');
 const fs = require('fs-extra');
+const path = require('path');
 
 /**
  * Portal UI locales that can carry a spec overlay.
@@ -107,7 +108,7 @@ function validateOverlayDocument(overlay, where) {
  *
  * @returns {Array<{locale: string, overlay: object}>} empty when none declared
  */
-function loadOverlays(product) {
+function loadOverlays(product, baseDir) {
   const declared = product && product.overlays;
   if (declared === undefined || declared === null) {
     return [];
@@ -139,7 +140,11 @@ function loadOverlays(product) {
     }
     seen.add(locale);
 
-    const overlay = readOverlayFile(entry.path);
+    const overlayPath =
+      baseDir && typeof entry.path === 'string'
+        ? path.resolve(baseDir, entry.path)
+        : entry.path;
+    const overlay = readOverlayFile(overlayPath);
     validateOverlayDocument(overlay, `${entry.path} (${locale})`);
 
     return {locale, overlay};

@@ -1,0 +1,21 @@
+{
+  "info": {
+    "title": "Echo MCP",
+    "version": "1.0.0",
+    "description": "Sample MCP tools catalogue for CLI tests."
+  },
+  "serverUrl": "https://api.example.com/v1/mcp/streamable",
+  "transport": "Streamable HTTP",
+  "tools": [
+    {
+      "name": "echo",
+      "description": "Echo a message"
+    }
+  ],
+  "resources": [
+    {
+      "name": "echo-policy",
+      "uri": "https://api.example.com/policy"
+    }
+  ]
+}

@@ -25,6 +25,7 @@ async function runUploadSpec(portal) {
       'Successfully applied backend team assignments to API products',
     );
   }
+  await portal.pushProductDocs();
 }
 
 /**

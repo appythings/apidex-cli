@@ -5,6 +5,23 @@ const overlayTargets = require('../../../src/validate/checks/overlay-targets');
 const fixtures = path.join(__dirname, '../../fixtures/validate');
 
 describe('overlay-targets check', () => {
+  it('skips overlay target checks for mcp products', async () => {
+    const result = await overlayTargets.run({
+      entries: [
+        {
+          name: 'mcp-product',
+          portalType: 'mcp',
+          inheritSpec: false,
+          spec: {tools: [{name: 'echo'}]},
+          overlays: [
+            {locale: 'nl-NL', overlay: {actions: [{target: '$.paths'}]}},
+          ],
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('passes when every target matches a node', async () => {
     const ctx = loadContext({
       manifestPath: path.join(fixtures, 'manifest-ok.yaml'),

@@ -53,16 +53,39 @@ describe('validate command', () => {
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/manifest path/));
   });
 
-  it('exits 1 when portal connection flags are missing', async () => {
+  it('exits 0 for a valid manifest without portal flags', async () => {
     const log = jest.fn();
     const exit = jest.fn();
     await runValidateCli(
       {manifestPath: path.join(fixtures, 'manifest-ok.yaml')},
       {log, exit},
     );
+    expect(exit).toHaveBeenCalledWith(0);
+  });
+
+  it('prints JSON when --json is set', async () => {
+    const log = jest.fn();
+    const exit = jest.fn();
+    await runValidateCli(
+      {manifestPath: path.join(fixtures, 'manifest-ok.yaml'), json: true},
+      {log, exit},
+    );
+    expect(exit).toHaveBeenCalledWith(0);
+    const payload = JSON.parse(log.mock.calls[0][0]);
+    expect(payload.ok).toBe(true);
+    expect(payload.results[0].id).toBe('manifest-paths');
+  });
+
+  it('exits 1 when portal connection flags are missing with --check-portal', async () => {
+    const log = jest.fn();
+    const exit = jest.fn();
+    await runValidateCli(
+      {manifestPath: path.join(fixtures, 'manifest-ok.yaml'), checkPortal: true},
+      {log, exit},
+    );
     expect(exit).toHaveBeenCalledWith(1);
     expect(log).toHaveBeenCalledWith(
-      expect.stringMatching(/validate requires --host and --environment/),
+      expect.stringMatching(/validate --check-portal requires --host and --environment/),
     );
   });
 
@@ -73,11 +96,14 @@ describe('validate command', () => {
     });
     expect(ok).toBe(false);
     expect(results.map(result => result.id)).toEqual([
+      'manifest-paths',
+      'spec-kind',
       'overlay-files',
       'overlay-locales',
       'overlay-shape',
       'overlay-targets',
       'required-locales',
+      'markdown-links',
       'manifest-products',
     ]);
     expect(results.find(result => result.id === 'overlay-files').ok).toBe(

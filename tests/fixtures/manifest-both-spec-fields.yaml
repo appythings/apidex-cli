@@ -1,0 +1,4 @@
+products:
+  - name: both
+    spec: echo-mcp.json
+    openapi: swagger-min.yaml

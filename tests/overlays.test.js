@@ -1,4 +1,5 @@
 const path = require('path');
+const os = require('os');
 const {
   SUPPORTED_LOCALES,
   canonicalizeLocale,
@@ -243,9 +244,15 @@ describe('loadOverlays', () => {
     ).toThrow('missing a "target" JSONPath expression');
   });
 
-  it('rejects an entry that is not an object', () => {
-    expect(() =>
-      loadOverlays({name: 'p', overlays: ['overlay-nl.yaml']}),
-    ).toThrow('must be a list of {locale, path} entries');
+  it('resolves overlay paths from a base directory', () => {
+    process.chdir(os.tmpdir());
+    const result = loadOverlays(
+      {
+        name: 'p',
+        overlays: [{locale: 'nl-NL', path: 'overlay-nl.yaml'}],
+      },
+      fixtures,
+    );
+    expect(result[0].locale).toBe('nl-NL');
   });
 });

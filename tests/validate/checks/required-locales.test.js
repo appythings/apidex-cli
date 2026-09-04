@@ -24,6 +24,23 @@ describe('required-locales check', () => {
     expect(result.messages[0]).toMatch(/de-DE/);
   });
 
+  it('skips mcp products', async () => {
+    const result = await requiredLocales.run({
+      options: {requireLocales: ['nl-NL']},
+      entries: [
+        {
+          kind: 'product',
+          inheritSpec: false,
+          portalType: 'mcp',
+          specPath: '/tmp/mcp.json',
+          name: 'mcp-product',
+          overlays: [],
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('skips inheritSpec products', async () => {
     const ctx = loadContext({
       manifestPath: path.join(fixtures, 'manifest-inherit.yaml'),

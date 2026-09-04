@@ -1,6 +1,9 @@
 module.exports = {
   id: 'manifest-products',
   async run(ctx) {
+    if (!ctx || !ctx.options || !ctx.options.checkPortal) {
+      return {ok: true, messages: []};
+    }
     if (ctx && ctx.gatewayProductsError) {
       return {ok: false, messages: [ctx.gatewayProductsError]};
     }
