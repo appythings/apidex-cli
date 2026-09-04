@@ -16,7 +16,7 @@
 - Replaced `@apidevtools/swagger-parser` with `@scalar/openapi-parser`.
 - Requires **Node.js >= 22**.
 - Overlay wording is Overlay 1.x (including `remove` and non-copy `update`), not copy-only translations.
-- Replaced `examples/overlay-demo/` with `examples/spec/` (validate + upload-spec) and `examples/markdown/` (upload-markdown). Spec example targets local Apigee X product `pep-echo` (displayName Echo v1) inheriting category `CLI category` (`echo.yaml`).
+- Replaced `examples/overlay-demo/` with `examples/spec/` (validate + upload-spec) and `examples/markdown/` (upload-markdown). Spec example targets local Apigee X product `pep-echo` (displayName Echo v1) inheriting category `CLI category` (`echo.yaml`, OpenAPI 3.2).
 - Spec upload paths encode environment and product names (so names like `Echo V1` work). `upload-markdown` keeps `https://` hosts as-is when `--host` already includes a scheme.
 
 ## 1.1.0

@@ -34,6 +34,7 @@ async function runValidUploadTest() {
     );
 
     let postCalled = false;
+    portal.request.get = async () => ({data: []});
     portal.request.post = async (url, body) => {
       postCalled = true;
       assert(
@@ -69,6 +70,7 @@ async function runInvalidUploadTest() {
     );
 
     let postCalled = false;
+    portal.request.get = async () => ({data: []});
     portal.request.post = async () => {
       postCalled = true;
       return {};

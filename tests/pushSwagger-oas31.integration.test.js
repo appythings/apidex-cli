@@ -17,7 +17,6 @@ describe('pushSwagger OAS 3.1 integration (real parser, mocked HTTP)', () => {
         NODE_OPTIONS: '--experimental-vm-modules',
       },
     });
-    jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
 
     if (result.status !== 0) {
       throw new Error(

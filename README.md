@@ -1,7 +1,7 @@
 # apidex-cli
 Commandline tool to use the management APIs of Apidex
 
-Supports **OpenAPI 3.0.x and 3.1.x** (including JSON Schema 2020-12 features). Specs are validated locally before upload and again by the Apidex backend. Requires **Node.js >= 18**.
+Supports **OpenAPI 3.0.x, 3.1.x, and 3.2.x** (including JSON Schema 2020-12 features). Specs are validated locally before upload and again by the Apidex backend. Requires **Node.js >= 22**.
 
 ## Installation
 ```npm i -g @appythings/apidex-cli```
@@ -46,7 +46,7 @@ Run:
 ```
 apidex-cli upload-spec [options] <manifest>
 
-uploads an openapi spec to apidex (OpenAPI 3.0.x or 3.1.x)
+uploads an openapi spec to apidex (OpenAPI 3.0.x, 3.1.x, or 3.2.x)
 
 Options:
   --environment <environment>    add the environment to deploy this to

@@ -1,4 +1,5 @@
 # Sample spec-repo manifest aimed at a local Apigee X portal.
+# Category spec is OpenAPI 3.2 (`specs/echo.yaml`).
 # `name` must be the Apigee product name, not displayName
 # (catalog card "Echo v1" is product `pep-echo`).
 # pep-echo inherits the category spec (PDX-1728-style catalog join).
