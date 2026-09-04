@@ -1,6 +1,6 @@
 const axios = require('axios');
 const qs = require('qs');
-const SwaggerParser = require('@apidevtools/swagger-parser');
+const {validateOpenApiFile} = require('../lib/openapiValidator');
 const yaml = require('js-yaml');
 const fs = require('fs-extra');
 const FormData = require('form-data');
@@ -251,7 +251,7 @@ class Portal {
           `Uploading ${product.openapi} for product: ${product.name}`,
         );
         const parsedSwagger = await this.readSwaggerFile(product.openapi);
-        await SwaggerParser.validate(product.openapi);
+        await validateOpenApiFile(product.openapi);
         const overlays = loadOverlays(product);
         if (overlays.length > 0) {
           console.log(
@@ -293,7 +293,7 @@ class Portal {
       this.categories.map(async category => {
         console.log(`Uploading ${category.name}`);
         const parsedSwagger = await this.readSwaggerFile(category.openapi);
-        await SwaggerParser.validate(category.openapi);
+        await validateOpenApiFile(category.openapi);
         const categoryOverlays = loadOverlays(category);
         await this.login();
         await this.assertOverlaysNotDropped(
@@ -354,7 +354,7 @@ class Portal {
                 return;
               }
               parsedSwagger = await this.readSwaggerFile(product.openapi);
-              await SwaggerParser.validate(product.openapi);
+              await validateOpenApiFile(product.openapi);
               // Products that inherit the category spec use the category's
               // overlays, so only own-spec products carry their own.
               overlays = loadOverlays(product);

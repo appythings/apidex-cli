@@ -1,0 +1,10 @@
+openapi: "3.2.0"
+info:
+  title: Minimal OAS 3.2 API
+  version: "1.0.0"
+paths:
+  /ping:
+    get:
+      responses:
+        "204":
+          description: No content

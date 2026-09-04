@@ -1,5 +1,5 @@
-jest.mock('@apidevtools/swagger-parser', () => ({
-  validate: jest.fn(() => Promise.resolve()),
+jest.mock('../src/lib/openapiValidator', () => ({
+  validateOpenApiFile: jest.fn(() => Promise.resolve()),
 }));
 
 const path = require('path');

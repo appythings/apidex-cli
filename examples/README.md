@@ -18,7 +18,7 @@ export APIDEX_TOKEN=   # or client credentials: APIDEX_CLIENTID / APIDEX_SECRET 
 
 | Piece | What it exercises |
 | --- | --- |
-| `CLI category` | Category spec: `echo.yaml` + overlays (`POST /api/specs`) |
+| `CLI category` | Category spec: OAS 3.2 `echo.yaml` + overlays (`POST /api/specs`) |
 | `pep-echo` | `inheritSpec: true` — no product spec; catalog join uses the inherit link (title **Echo v1**) |
 | `teams` / `backendTeams` | Generic producer + backend team (`owner@example.test`) |
 
