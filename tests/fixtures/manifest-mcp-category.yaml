@@ -1,0 +1,8 @@
+categories:
+  - name: CLI MCP category
+    spec: echo-mcp.json
+    products:
+      - name: pep-mcp
+        portalType: mcp
+        inheritSpec: true
+        permissionGroup: owners

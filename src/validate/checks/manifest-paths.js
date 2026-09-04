@@ -6,12 +6,28 @@ const {
   walkProducts,
 } = require('../../lib/product-docs');
 const {canonicalizeLocale} = require('../../lib/overlays');
+const {specField, specPath} = require('../../lib/spec-ref');
 
 function existsFile(filePath) {
   try {
     return fs.statSync(filePath).isFile();
   } catch {
     return false;
+  }
+}
+
+function checkSpecRef(owner, entry, baseDir, messages) {
+  const ref = specField(entry);
+  if (ref.error) {
+    messages.push(ref.error);
+    return;
+  }
+  if (!ref.value) {
+    return;
+  }
+  const resolved = specPath(entry, baseDir);
+  if (!existsFile(resolved.path)) {
+    messages.push(`${owner}: ${ref.field} file not found (${ref.value})`);
   }
 }
 
@@ -29,13 +45,8 @@ module.exports = {
             `${category.name}: "docs" belongs on products, not categories`,
           );
         }
-        if (category && category.openapi) {
-          const specPath = path.resolve(baseDir, category.openapi);
-          if (!existsFile(specPath)) {
-            messages.push(
-              `${category.name}: openapi file not found (${category.openapi})`,
-            );
-          }
+        if (category) {
+          checkSpecRef(category.name, category, baseDir, messages);
         }
       }
     }
@@ -50,11 +61,8 @@ module.exports = {
       ) {
         messages.push(`${owner}: portalType must be "api" or "mcp"`);
       }
-      if (!product.inheritSpec && product.openapi) {
-        const specPath = path.resolve(baseDir, product.openapi);
-        if (!existsFile(specPath)) {
-          messages.push(`${owner}: openapi file not found (${product.openapi})`);
-        }
+      if (!product.inheritSpec) {
+        checkSpecRef(owner, product, baseDir, messages);
       }
       if (product.docs && !Array.isArray(product.docs)) {
         messages.push(`${owner}: "docs" must be a list`);

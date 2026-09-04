@@ -11,6 +11,7 @@ module.exports = {
     const wanted = required.map(locale => canonicalizeLocale(locale) || locale);
     for (const entry of ctx.entries) {
       if (entry.inheritSpec) continue;
+      if (entry.portalType === 'mcp') continue;
       if (!entry.specPath && entry.kind === 'product') continue;
       const present = new Set(
         entry.overlays

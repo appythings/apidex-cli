@@ -5,6 +5,7 @@ module.exports = {
   async run(ctx) {
     const messages = [];
     for (const entry of ctx.entries) {
+      if (entry.portalType === 'mcp') continue;
       if (entry.inheritSpec) continue;
       if (entry.specError) {
         messages.push(`${entry.name}: cannot check overlay targets (${entry.specError})`);

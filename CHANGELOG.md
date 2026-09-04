@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- `upload-spec` and `validate` accept MCP tools-catalogue specs (`portalType: mcp`, `spec:` file pointer). `openapi:` remains the REST alias. Overlays stay OpenAPI-only.
 - `apidex-cli validate` always checks that manifest API products exist in the portal (name or id, not displayName). Needs `--host`, `--environment`, and `--token` or the same client credentials as `upload-spec`. Overlay checks still run if the portal call fails.
 - Upload fails when a new spec version would drop published overlays: no overlay files, or a subset of the locales already on the portal (`--force` does not bypass). Equal or superset is OK.
 - Failed category overlay PUT deletes the new category spec (same as the UI). That can cascade `inheritSpec` product specs for the same category; re-run `upload-spec` to restore inherit links.

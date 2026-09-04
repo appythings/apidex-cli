@@ -15,6 +15,19 @@ describe('overlay-files check', () => {
     expect(result.messages[0]).toMatch(/pet-store/);
   });
 
+  it('skips overlay file checks for mcp products', async () => {
+    const result = await overlayFiles.run({
+      entries: [
+        {
+          name: 'mcp-product',
+          portalType: 'mcp',
+          overlays: [{error: 'would fail if checked'}],
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('fails when an overlay entry has no path', async () => {
     const ctx = loadContext({
       manifestPath: path.join(fixtures, 'manifest-missing-path.yaml'),

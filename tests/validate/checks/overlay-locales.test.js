@@ -5,6 +5,19 @@ const overlayLocales = require('../../../src/validate/checks/overlay-locales');
 const fixtures = path.join(__dirname, '../../fixtures/validate');
 
 describe('overlay-locales check', () => {
+  it('skips overlay locale checks for mcp products', async () => {
+    const result = await overlayLocales.run({
+      entries: [
+        {
+          name: 'mcp-product',
+          portalType: 'mcp',
+          overlays: [{locale: 'xx-ZZ'}],
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('fails an unsupported locale', async () => {
     const ctx = loadContext({
       manifestPath: path.join(fixtures, 'manifest-unsupported-locale.yaml'),

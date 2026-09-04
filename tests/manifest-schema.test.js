@@ -1,6 +1,17 @@
 const schema = require('../schema/apidex-manifest.schema.json');
 
 describe('manifest schema', () => {
+  it('documents spec as the generic file pointer and openapi as the alias', () => {
+    expect(schema.$defs.product.properties.spec).toEqual({type: 'string'});
+    expect(schema.$defs.product.properties.openapi).toEqual({type: 'string'});
+    expect(schema.properties.categories.items.properties.spec).toEqual({
+      type: 'string',
+    });
+    expect(schema.properties.categories.items.properties.openapi).toEqual({
+      type: 'string',
+    });
+  });
+
   it('documents api and mcp portal types with api as the default', () => {
     expect(schema.$defs.product.properties.portalType).toEqual({
       type: 'string',

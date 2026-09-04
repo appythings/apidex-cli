@@ -276,6 +276,24 @@ describe('manifest-paths and markdown-links', () => {
     expect(result.messages.join('\n')).toMatch(/openapi file not found/);
   });
 
+  it('fails missing spec files and both spec pointers', async () => {
+    const ctx = writeManifest({
+      products: [
+        {name: 'mcp-missing', spec: 'gone.json', portalType: 'mcp'},
+        {
+          name: 'both',
+          spec: 'a.json',
+          openapi: 'b.yaml',
+        },
+      ],
+    });
+    const result = await manifestPaths.run(ctx);
+    expect(result.messages.join('\n')).toMatch(/spec file not found \(gone.json\)/);
+    expect(result.messages.join('\n')).toMatch(
+      /both: declare spec or openapi, not both/,
+    );
+  });
+
   it('fails missing category openapi, non-list docs, and empty markdown', async () => {
     const ctx = writeManifest({
       categories: [

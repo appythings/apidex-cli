@@ -16,6 +16,7 @@
         "required": ["name"],
         "properties": {
           "name": {"type": "string"},
+          "spec": {"type": "string"},
           "openapi": {"type": "string"},
           "overlays": {"$ref": "#/$defs/overlays"},
           "products": {
@@ -97,6 +98,7 @@
           "type": "string",
           "description": "Gateway product id/name, not catalog displayName"
         },
+        "spec": {"type": "string"},
         "openapi": {"type": "string"},
         "inheritSpec": {"type": "boolean"},
         "portalType": {

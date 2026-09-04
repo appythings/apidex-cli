@@ -1,7 +1,8 @@
 # Apidex CLI — agent notes
 
 - Product `name` is the gateway id/name, not the catalog displayName.
-- Overlay `path`, `openapi`, `docs[].markdown`, and `docs[].locales[].markdown` are relative to the **manifest file**, not the process cwd.
+- Overlay `path`, `spec`, `openapi`, `docs[].markdown`, and `docs[].locales[].markdown` are relative to the **manifest file**, not the process cwd.
+- `spec:` is the generic spec file pointer; `openapi:` is the REST alias. Do not set both. `portalType: mcp` selects the MCP tools-catalogue adapter (no overlays). GraphQL is not supported yet.
 - inheritSpec: overlays on the **category**; `docs:` on the **product**. Never `docs:` on a category. Never slug `spec`.
 - Add a tab: `apidex-cli manifest add-doc <product> <file.md> --manifest apis.yaml`
 - Add a translation: `apidex-cli manifest add-doc <product> <file.md> --manifest apis.yaml --slug <tab> --locale nl-NL`; top-level markdown is `en-GB`.
@@ -13,7 +14,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **apidex-cli** (226 symbols, 501 relationships, 20 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **apidex-cli** (257 symbols, 535 relationships, 20 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

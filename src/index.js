@@ -71,7 +71,7 @@ function createProgram() {
       'provide a token instead',
       process.env.APIDEX_TOKEN,
     )
-    .description('uploads an openapi spec to apidex')
+    .description('uploads OpenAPI or MCP specs to apidex')
     .action(async (manifest, command) => {
       const config = {
         environment: command.environment,
@@ -150,7 +150,7 @@ function createProgram() {
     )
     .option('--json', 'print check results as JSON', false)
     .description(
-      'validate OpenAPI overlay files, manifest paths, and markdown links (use --check-portal to match products in the portal)',
+      'validate OpenAPI and MCP specs, overlay files, manifest paths, and markdown links (use --check-portal to match products in the portal)',
     )
     .action(async (manifest, command) => {
       await runValidateCli({

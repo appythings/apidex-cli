@@ -1,7 +1,6 @@
 const axios = require('axios');
 const qs = require('qs');
 const path = require('path');
-const SwaggerParser = require('@apidevtools/swagger-parser');
 const yaml = require('js-yaml');
 const fs = require('fs-extra');
 const FormData = require('form-data');
@@ -9,6 +8,8 @@ const jwt = require('../lib/jwt');
 const {formatRequestError} = require('../lib/formatAxiosError');
 const {canonicalizeLocale, loadOverlays} = require('../lib/overlays');
 const {walkProducts, loadProductDocsForUpload} = require('../lib/product-docs');
+const {specField, portalType, hasSpecRef, inheritsCategorySpec} = require('../lib/spec-ref');
+const {getAdapter} = require('../specs');
 
 class Portal {
   /** @param {Record<string, unknown>} yml */
@@ -54,14 +55,29 @@ class Portal {
       const productConfig = yml.products;
       this.categories = yml.categories;
       this.backendTeamAssignments = Portal.collectBackendTeamAssignments(yml);
+      const allEntries = [
+        ...(productConfig || []),
+        ...(Array.isArray(yml.categories) ? yml.categories : []),
+        ...(Array.isArray(yml.categories)
+          ? yml.categories.flatMap(category =>
+              category && Array.isArray(category.products)
+                ? category.products
+                : [],
+            )
+          : []),
+      ];
+      const both = allEntries.find(entry => entry && specField(entry).error);
+      if (both) {
+        throw new Error(specField(both).error);
+      }
       if (
-        (!productConfig || !productConfig.find(product => product.openapi)) &&
+        (!productConfig || !productConfig.find(product => hasSpecRef(product))) &&
         !this.categories
       ) {
         throw new Error('no product found to upload');
       }
       if (productConfig) {
-        this.swaggerFiles = productConfig.filter(product => product.openapi);
+        this.swaggerFiles = productConfig.filter(product => hasSpecRef(product));
       }
     }
     this.config = config;
@@ -140,6 +156,81 @@ class Portal {
       return JSON.parse(swagger);
     }
     throw new Error('Openapi spec must be either yaml/yml or json');
+  }
+
+  specRefOrThrow(entry) {
+    const ref = specField(entry);
+    if (ref.error) {
+      throw new Error(ref.error);
+    }
+    if (!ref.value) {
+      throw new Error(
+        `${(entry && entry.name) || 'entry'}: declare spec or openapi`,
+      );
+    }
+    return ref;
+  }
+
+  async loadAndValidateSpec(entry) {
+    const ref = this.specRefOrThrow(entry);
+    const parsed = this.readSwaggerFile(ref.value);
+    const kind = portalType(entry);
+    await getAdapter(kind).validate(
+      this.resolveFromManifest(ref.value),
+      parsed,
+    );
+    return {parsed, kind, file: ref.value};
+  }
+
+  rejectMcpOverlays(entry, kind) {
+    if (
+      kind === 'mcp' &&
+      Array.isArray(entry.overlays) &&
+      entry.overlays.length > 0
+    ) {
+      throw new Error(
+        `${entry.name}: overlays are not supported for portalType mcp`,
+      );
+    }
+  }
+
+  async ensureApiStyle(productName, kind) {
+    if (kind !== 'mcp') {
+      return;
+    }
+    let products = [];
+    try {
+      products = await this.listApiproducts();
+    } catch {
+      products = [];
+    }
+    const match = products.find(
+      product =>
+        product &&
+        (product.name === productName || product.id === productName),
+    );
+    if (match && match.apiStyle === 'mcp') {
+      return;
+    }
+    await this.request.post(
+      `api/environments/${encodeURIComponent(
+        this.config.environment,
+      )}/apiproducts/${encodeURIComponent(productName)}/apistyle`,
+      {apiStyle: 'mcp'},
+    );
+  }
+
+  categoryPortalType(category) {
+    const inheritors = (category.products || []).filter(
+      product => product && inheritsCategorySpec(product),
+    );
+    const types = [...new Set(inheritors.map(product => portalType(product)))];
+    if (types.length > 1) {
+      throw new Error(
+        `${category.name}: inheriting products must share one portalType (found ${types.join(', ')})`,
+      );
+    }
+    return types[0] || portalType(category);
   }
 
   overlayDropError(name, locales) {
@@ -265,12 +356,11 @@ class Portal {
     }
     return Promise.all(
       this.swaggerFiles.map(async product => {
-        console.log(
-          `Uploading ${product.openapi} for product: ${product.name}`,
-        );
-        const parsedSwagger = await this.readSwaggerFile(product.openapi);
-        await SwaggerParser.validate(this.resolveFromManifest(product.openapi));
-        const overlays = loadOverlays(product, this.manifestDir);
+        const {parsed, kind, file} = await this.loadAndValidateSpec(product);
+        console.log(`Uploading ${file} for product: ${product.name}`);
+        this.rejectMcpOverlays(product, kind);
+        const overlays =
+          kind === 'mcp' ? [] : loadOverlays(product, this.manifestDir);
         if (overlays.length > 0) {
           console.log(
             `Including ${overlays.length} overlay(s) for ${product.name}: ${overlays
@@ -281,14 +371,17 @@ class Portal {
         if (!this.config.token) {
           await this.login();
         }
-        await this.assertOverlaysNotDropped(product.name, overlays);
+        await this.ensureApiStyle(product.name, kind);
+        if (kind !== 'mcp') {
+          await this.assertOverlaysNotDropped(product.name, overlays);
+        }
         return this.request
           .post(
             `${this.apiproductSpecsPath(product.name)}${
               this.config.force ? '?force=true' : ''
             }`,
             {
-              spec: parsedSwagger,
+              spec: parsed,
               inheritSpec: false,
               permissiongroup: product.permissionGroup,
               latest: true,
@@ -310,15 +403,22 @@ class Portal {
     return Promise.all(
       this.categories.map(async category => {
         console.log(`Uploading ${category.name}`);
-        const parsedSwagger = await this.readSwaggerFile(category.openapi);
-        await SwaggerParser.validate(this.resolveFromManifest(category.openapi));
-        const categoryOverlays = loadOverlays(category, this.manifestDir);
+        const categoryKind = this.categoryPortalType(category);
+        const {parsed: parsedSwagger, kind} = await this.loadAndValidateSpec({
+          ...category,
+          portalType: categoryKind,
+        });
+        this.rejectMcpOverlays(category, kind);
+        const categoryOverlays =
+          kind === 'mcp' ? [] : loadOverlays(category, this.manifestDir);
         await this.login();
-        await this.assertOverlaysNotDropped(
-          category.name,
-          categoryOverlays,
-          {categoryId: category.name},
-        );
+        if (kind !== 'mcp') {
+          await this.assertOverlaysNotDropped(
+            category.name,
+            categoryOverlays,
+            {categoryId: category.name},
+          );
+        }
         const createdCategorySpec = await this.request.post(`api/specs`, {
           environmentId: this.config.environment,
           categoryId: category.name,
@@ -366,22 +466,25 @@ class Portal {
             console.log(`Uploading ${product.name}`);
             let parsedSwagger;
             let overlays = [];
+            const productKind = portalType(product);
             if (product.inheritSpec === false) {
-              if (!product.openapi) {
+              if (!hasSpecRef(product)) {
                 console.log('You have to specify spec');
                 return;
               }
-              parsedSwagger = await this.readSwaggerFile(product.openapi);
-              await SwaggerParser.validate(
-                this.resolveFromManifest(product.openapi),
-              );
-              // Products that inherit the category spec use the category's
-              // overlays, so only own-spec products carry their own.
-              overlays = loadOverlays(product, this.manifestDir);
+              const loaded = await this.loadAndValidateSpec(product);
+              parsedSwagger = loaded.parsed;
+              this.rejectMcpOverlays(product, loaded.kind);
+              overlays =
+                loaded.kind === 'mcp'
+                  ? []
+                  : loadOverlays(product, this.manifestDir);
               if (!this.config.token) {
                 await this.login();
               }
-              await this.assertOverlaysNotDropped(product.name, overlays);
+              if (loaded.kind !== 'mcp') {
+                await this.assertOverlaysNotDropped(product.name, overlays);
+              }
             } else if (
               Array.isArray(product.overlays) &&
               product.overlays.length > 0
@@ -390,6 +493,7 @@ class Portal {
                 `Ignoring overlays for ${product.name}: it inherits the category spec, so declare the overlays on category "${category.name}" instead`,
               );
             }
+            await this.ensureApiStyle(product.name, productKind);
             return this.request
               .post(
                 `${this.apiproductSpecsPath(product.name)}${

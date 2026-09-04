@@ -16,6 +16,7 @@ const portal = {
 
 const checkIds = [
   'manifest-paths',
+  'spec-kind',
   'overlay-files',
   'overlay-locales',
   'overlay-shape',

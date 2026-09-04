@@ -1,5 +1,6 @@
 module.exports = [
   require('./manifest-paths'),
+  require('./spec-kind'),
   require('./overlay-files'),
   require('./overlay-locales'),
   require('./overlay-shape'),

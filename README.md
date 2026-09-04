@@ -1,7 +1,7 @@
 # apidex-cli
 Commandline tool to use the management APIs of Apidex
 
-Supports **OpenAPI 3.0.x and 3.1.x** (including JSON Schema 2020-12 features). Specs are validated locally before upload and again by the Apidex backend. Requires **Node.js >= 18**.
+Supports **OpenAPI 3.0.x and 3.1.x** (including JSON Schema 2020-12 features) and **MCP tools-catalogue** specs (`portalType: mcp`). Specs are validated locally by `validate` and `upload-spec`. OpenAPI is checked again by the Apidex backend. Requires **Node.js >= 18**.
 
 ## Installation
 ```npm i -g @appythings/apidex-cli```
@@ -11,7 +11,8 @@ To upload your API's to apidex, create a yaml file with the following content:
 ```
 products:
   - name: ID-of-the-API # For SAP and Apigee this is the name of the product, not the displayName
-    openapi: swagger.json # link to an openapi spec in yaml or json format
+    openapi: swagger.json # OpenAPI file (yaml or json). Use spec: for MCP.
+    portalType: api # api (default) or mcp
     permissionGroup: owners # Permission group that is allowed access to this product (optional)
     overlays: # optional: per-locale OpenAPI Overlay 1.x documents, see "Per-locale OpenAPI overlays"
       - locale: nl-NL
@@ -39,6 +40,11 @@ categories: # You can also bundle multiple products in a category
         openapi: swagger.json # Or the product will have it's own spec
         permissionGroup: owners # Permission group that is allowed access to this product (optional)
         backendTeam: backend-squad # optional: assign this API product to a backend team (by team name)
+  - name: ID-of-the-MCP # Gateway product id/name
+    spec: mcp-tools.json # tools-catalogue JSON (or yaml). Do not also set openapi.
+    portalType: mcp # required so validate/upload use the MCP adapter
+    docs:
+      - type: overview
 teams: # optional: producer teams (teamType normal)
   - name: team-name
     owner: owner@test.com
@@ -54,7 +60,7 @@ Run:
 ```
 apidex-cli upload-spec [options] <manifest>
 
-uploads an openapi spec to apidex (OpenAPI 3.0.x or 3.1.x)
+uploads an OpenAPI or MCP spec to apidex (OpenAPI 3.0.x / 3.1.x, or an MCP tools catalogue)
 
 Options:
   --environment <environment>    add the environment to deploy this to
@@ -74,7 +80,7 @@ Options:
 ```
 apidex-cli validate [manifest] [--require-locales <list>] [--json] [--check-portal]
 
-validate overlay files, YAML/markdown paths, and relative links in docs (offline)
+validate OpenAPI and MCP spec documents, overlay files, YAML/markdown paths, and relative links in docs (offline)
 
 Options:
   --require-locales <list>  comma-separated locales every non-inherited spec must declare overlays for
@@ -149,6 +155,13 @@ Coverage thresholds are enforced in `jest.config.js`: 90% global minimum, with h
 - In YAML manifests/specs, quote version fields: `openapi: "3.1.0"` and `info.version: "1.0.0"` (unquoted `openapi: 3.1` is parsed as a number and rejected).
 - Paths-less / webhooks-only 3.1 documents are not supported by all portal features; include `paths` for REST APIs.
 - See [CHANGELOG.md](./CHANGELOG.md) for release details.
+
+### MCP tools catalogues
+
+- Point at the file with `spec:` (or keep `openapi:` for REST). Do not set both.
+- Set `portalType: mcp`. The CLI validates a tools-catalogue document (`tools[]`, unique tool names, optional `resources` / `prompts`) and POSTs `apiStyle: mcp` before the spec.
+- Overlays are OpenAPI-only. Declaring `overlays` on an MCP product or category fails `validate` / `upload-spec`.
+- Category + `inheritSpec` works the same as OpenAPI. See [`examples/spec/mcps.yaml`](./examples/spec/mcps.yaml) for a copy-paste kit.
 
 ### Per-locale OpenAPI overlays
 

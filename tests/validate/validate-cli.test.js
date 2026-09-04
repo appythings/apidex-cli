@@ -97,6 +97,7 @@ describe('validate command', () => {
     expect(ok).toBe(false);
     expect(results.map(result => result.id)).toEqual([
       'manifest-paths',
+      'spec-kind',
       'overlay-files',
       'overlay-locales',
       'overlay-shape',

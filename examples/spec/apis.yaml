@@ -34,6 +34,15 @@ categories:
           - markdown: docs/faq.md
             title: FAQ
             slug: faq
+  - name: CLI MCP category
+    spec: specs/echo-mcp.json
+    products:
+      - name: pep-mcp
+        portalType: mcp
+        inheritSpec: true
+        permissionGroup: owners
+        docs:
+          - type: overview
 teams:
   - name: example-producers
     owner: owner@example.test

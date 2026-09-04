@@ -1,0 +1,5 @@
+products:
+  - name: pep-mcp
+    spec: echo-mcp.json
+    portalType: mcp
+    permissionGroup: owners

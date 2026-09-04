@@ -1,10 +1,12 @@
 const {canonicalizeLocale} = require('../../lib/overlays');
+const {skipMcpOverlays} = require('../skip-mcp-overlays');
 
 module.exports = {
   id: 'overlay-locales',
   async run(ctx) {
     const messages = [];
     for (const entry of ctx.entries) {
+      if (skipMcpOverlays(entry)) continue;
       const seen = new Set();
       for (const overlay of entry.overlays) {
         if (overlay.error) continue;
