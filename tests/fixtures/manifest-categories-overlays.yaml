@@ -1,0 +1,18 @@
+categories:
+  - name: cat1
+    openapi: category-spec.yaml
+    overlays:
+      - locale: nl-NL
+        path: overlay-nl.yaml
+    products:
+      - name: sub-prod
+        inheritSpec: true
+        overlays:
+          - locale: nl-NL
+            path: overlay-nl.yaml
+      - name: own-spec-prod
+        inheritSpec: false
+        openapi: swagger-min.yaml
+        overlays:
+          - locale: de-DE
+            path: overlay-de.json

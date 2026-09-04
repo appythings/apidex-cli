@@ -1,0 +1,8 @@
+products:
+  - name: api-product-1
+    openapi: swagger-min.yaml
+    overlays:
+      - locale: nl-NL
+        path: overlay-nl.yaml
+      - locale: de-DE
+        path: overlay-de.json

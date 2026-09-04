@@ -1,0 +1,7 @@
+overlay: 1.1.0
+info:
+  title: Bad shape
+  version: 1.0.0
+actions:
+  - update:
+      description: missing target

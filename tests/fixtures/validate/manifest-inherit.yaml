@@ -1,0 +1,15 @@
+categories:
+  - name: pet-category
+    openapi: spec.yaml
+    overlays:
+      - locale: nl-NL
+        path: overlays/nl-NL.yaml
+    products:
+      - name: pets-public
+        inheritSpec: true
+      - name: pets-own
+        inheritSpec: false
+        openapi: spec.yaml
+        overlays:
+          - locale: de-DE
+            path: overlays/de-DE.yaml
