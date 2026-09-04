@@ -2,7 +2,7 @@ openapi: "3.2.0"
 info:
   title: Echo V1
   summary: Canonical Echo V1 spec for local CLI smoke tests.
-  version: "1.0.0"
+  version: "1.1.0"
   description: OpenAPI 3.2 Echo V1 spec for local CLI smoke tests.
 paths:
   /pets:
