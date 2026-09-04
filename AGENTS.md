@@ -2,7 +2,7 @@
 
 - Product `name` is the gateway id/name, not the catalog displayName.
 - Overlay `path`, `spec`, `openapi`, `docs[].markdown`, and `docs[].locales[].markdown` are relative to the **manifest file**, not the process cwd.
-- `spec:` is the generic spec file pointer; `openapi:` is the REST alias. Do not set both. `portalType: mcp` selects the MCP tools-catalogue adapter (no overlays). GraphQL is not supported yet.
+- `spec:` is the generic spec file pointer; `openapi:` is the REST alias. Do not set both. `portalType: mcp` selects the MCP tools-catalogue adapter (category inherit, no overlays). `portalType: graphql` selects the v1 envelope adapter (product-only, no overlays, no inheritSpec).
 - inheritSpec: overlays on the **category**; `docs:` on the **product**. Never `docs:` on a category. Never slug `spec`.
 - Add a tab: `apidex-cli manifest add-doc <product> <file.md> --manifest apis.yaml`
 - Add a translation: `apidex-cli manifest add-doc <product> <file.md> --manifest apis.yaml --slug <tab> --locale nl-NL`; top-level markdown is `en-GB`.

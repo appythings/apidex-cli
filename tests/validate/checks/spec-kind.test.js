@@ -181,15 +181,79 @@ describe('spec-kind check', () => {
     expect(result.messages.join('\n')).not.toMatch(/website:/);
   });
 
-  it('rejects graphql portalType as not supported yet', async () => {
-    const ctx = writeManifest({
+  it('accepts a GraphQL envelope and rejects inherit, overlays, and wrong kinds', async () => {
+    fs.writeFileSync(
+      path.join(dir, 'echo-gql.json'),
+      JSON.stringify({
+        document: {
+          kind: 'graphql',
+          schemaVersion: 1,
+          info: {title: 'Echo', version: '1.0.0'},
+          schema: 'type Query { hello: String }',
+        },
+        execution: {
+          endpoint: 'https://example.com/graphql',
+          auth: {type: 'none'},
+        },
+      }),
+    );
+    const ok = writeManifest({
       products: [
-        {name: 'gql', spec: 'echo.yaml', portalType: 'graphql'},
+        {name: 'gql-ok', spec: 'echo-gql.json', portalType: 'graphql'},
       ],
     });
-    const result = await specKind.run(ctx);
-    expect(result.messages.join('\n')).toMatch(
-      /portalType "graphql" is not supported yet/,
+    expect((await specKind.run(ok)).ok).toBe(true);
+
+    const wrong = writeManifest({
+      products: [
+        {name: 'gql-oas', spec: 'echo.yaml', portalType: 'graphql'},
+        {name: 'oas-gql', spec: 'echo-gql.json', portalType: 'api'},
+      ],
+    });
+    const wrongResult = await specKind.run(wrong);
+    expect(wrongResult.messages.join('\n')).toMatch(
+      /gql-oas: spec is not a GraphQL v1 upload envelope/,
+    );
+    expect(wrongResult.messages.join('\n')).toMatch(
+      /oas-gql: spec looks like a GraphQL upload envelope/,
+    );
+
+    const mcpTagged = writeManifest({
+      products: [
+        {name: 'mcp-gql', spec: 'echo-gql.json', portalType: 'mcp'},
+      ],
+    });
+    expect((await specKind.run(mcpTagged)).messages.join('\n')).toMatch(
+      /mcp-gql: spec looks like a GraphQL upload envelope/,
+    );
+
+    const inherit = writeManifest({
+      categories: [
+        {
+          name: 'gql-cat',
+          spec: 'echo-gql.json',
+          portalType: 'graphql',
+          overlays: [{locale: 'nl-NL', path: 'overlay.yaml'}],
+          products: [
+            {
+              name: 'gql-child',
+              portalType: 'graphql',
+              inheritSpec: true,
+              overlays: [{locale: 'nl-NL', path: 'overlay.yaml'}],
+            },
+          ],
+        },
+      ],
+    });
+    const inheritResult = await specKind.run(inherit);
+    expect(inheritResult.messages.join('\n')).toMatch(
+      /portalType graphql is product-only/,
+    );
+    expect(inheritResult.messages.join('\n')).toMatch(
+      /inheritSpec is not supported for portalType graphql/,
+    );
+    expect(inheritResult.messages.join('\n')).toMatch(
+      /overlays are not supported for portalType graphql/,
     );
   });
 
@@ -268,7 +332,7 @@ describe('spec-kind check', () => {
     const result = await specKind.run(ctx);
     expect(result.messages.join('\n')).toMatch(/bad-cat:/);
     expect(result.messages.join('\n')).toMatch(
-      /portalType "graphql" is not supported yet/,
+      /portalType graphql is product-only/,
     );
   });
 

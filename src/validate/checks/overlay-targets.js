@@ -1,11 +1,12 @@
 const {targetMatches} = require('../jsonpath');
+const {skipNonOpenapiOverlays} = require('../skip-mcp-overlays');
 
 module.exports = {
   id: 'overlay-targets',
   async run(ctx) {
     const messages = [];
     for (const entry of ctx.entries) {
-      if (entry.portalType === 'mcp') continue;
+      if (skipNonOpenapiOverlays(entry)) continue;
       if (entry.inheritSpec) continue;
       if (entry.specError) {
         messages.push(`${entry.name}: cannot check overlay targets (${entry.specError})`);

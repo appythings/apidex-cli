@@ -57,9 +57,10 @@ module.exports = {
       if (
         product.portalType !== undefined &&
         product.portalType !== 'api' &&
-        product.portalType !== 'mcp'
+        product.portalType !== 'mcp' &&
+        product.portalType !== 'graphql'
       ) {
-        messages.push(`${owner}: portalType must be "api" or "mcp"`);
+        messages.push(`${owner}: portalType must be "api", "mcp", or "graphql"`);
       }
       if (!product.inheritSpec) {
         checkSpecRef(owner, product, baseDir, messages);

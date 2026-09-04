@@ -1,5 +1,10 @@
-function skipMcpOverlays(entry) {
-  return Boolean(entry && entry.portalType === 'mcp');
+function skipNonOpenapiOverlays(entry) {
+  const kind = entry && entry.portalType;
+  return kind === 'mcp' || kind === 'graphql';
 }
 
-module.exports = {skipMcpOverlays};
+function skipMcpOverlays(entry) {
+  return skipNonOpenapiOverlays(entry);
+}
+
+module.exports = {skipMcpOverlays, skipNonOpenapiOverlays};

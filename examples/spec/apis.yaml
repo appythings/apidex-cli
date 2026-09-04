@@ -1,7 +1,7 @@
 # Sample spec-repo manifest aimed at a local Apigee X portal.
 # `name` must be the Apigee product name, not displayName
 # (catalog card "Echo v1" is product `pep-echo`).
-# `portalType` defaults to `api`; use `mcp` for an MCP portal product.
+# `portalType` defaults to `api`; use `mcp` or `graphql` for those catalogues.
 # pep-echo inherits the category spec (PDX-1728-style catalog join).
 #
 #   node ../../src/index.js validate apis.yaml
@@ -43,6 +43,13 @@ categories:
         permissionGroup: owners
         docs:
           - type: overview
+products:
+  - name: pep-graphql
+    spec: specs/countries-envelope.json
+    portalType: graphql
+    permissionGroup: owners
+    docs:
+      - type: overview
 teams:
   - name: example-producers
     owner: owner@example.test

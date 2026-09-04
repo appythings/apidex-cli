@@ -17,8 +17,9 @@ export APIDEX_TOKEN=   # or client credentials: APIDEX_CLIENTID / APIDEX_SECRET 
 `spec`, `openapi`, overlay `path`, `docs[].markdown`, and localized docs markdown
 resolve from the **manifest directory**. You do not need to `cd` into
 `examples/spec/` for that. Do not set both `spec` and `openapi`. MCP products
-use `portalType: mcp` and a tools-catalogue file (`tools[]`). Overlay files
-are OpenAPI-only.
+use `portalType: mcp` and a tools-catalogue file (`tools[]`). GraphQL products
+use `portalType: graphql` and a v1 envelope (product-only, no inherit, no overlays).
+Overlay files are OpenAPI-only.
 
 ## Spec (`examples/spec/`)
 
@@ -27,6 +28,7 @@ are OpenAPI-only.
 | `CLI category` | Category spec: `echo.yaml` + overlays (`POST /api/specs`) |
 | `pep-echo` | `inheritSpec: true` — no product spec; catalog join uses the inherit link (title **Echo v1**). `docs:` are Payload product tabs; Getting started includes `nl-NL` |
 | `CLI MCP category` / `pep-mcp` | MCP tools catalogue (`echo-mcp.json`) + inherit. `portalType: mcp`. Copy-paste kit: [`mcps.yaml`](./spec/mcps.yaml) |
+| `pep-graphql` | GraphQL v1 envelope (`countries-envelope.json`). Product-only. Copy-paste kit: [`graphqls.yaml`](./spec/graphqls.yaml) |
 | `teams` / `backendTeams` | Generic producer + backend team (`owner@example.test`) |
 
 This matches [PDX-1728](https://appyknows.atlassian.net/browse/PDX-1728): a category spec plus inherit products. Overlays belong on the category only. Product tabs (`docs:`) belong on `pep-echo`.
@@ -40,6 +42,7 @@ If `pep-echo` already has an own-spec from an earlier upload (`inheritSpec: fals
 node src/index.js validate examples/spec/apis.yaml
 node src/index.js validate examples/spec/apis.yaml --json
 node src/index.js validate examples/spec/mcps.yaml
+node src/index.js validate examples/spec/graphqls.yaml
 
 # add another tab (flags only)
 # node src/index.js manifest add-doc pep-echo examples/spec/docs/faq.md --manifest examples/spec/apis.yaml

@@ -41,6 +41,23 @@ describe('required-locales check', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('skips graphql products', async () => {
+    const result = await requiredLocales.run({
+      options: {requireLocales: ['nl-NL']},
+      entries: [
+        {
+          kind: 'product',
+          inheritSpec: false,
+          portalType: 'graphql',
+          specPath: '/tmp/gql.json',
+          name: 'gql-product',
+          overlays: [],
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('skips inheritSpec products', async () => {
     const ctx = loadContext({
       manifestPath: path.join(fixtures, 'manifest-inherit.yaml'),

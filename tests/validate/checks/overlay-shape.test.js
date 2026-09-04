@@ -29,6 +29,19 @@ describe('overlay-shape check', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('skips overlay shape checks for graphql products', async () => {
+    const result = await overlayShape.run({
+      entries: [
+        {
+          name: 'gql-product',
+          portalType: 'graphql',
+          overlays: [{overlay: {not: 'an overlay'}}],
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('fails an overlay that is missing a target', async () => {
     const ctx = loadContext({
       manifestPath: path.join(fixtures, 'manifest-bad-shape.yaml'),

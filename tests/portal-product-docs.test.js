@@ -145,6 +145,45 @@ describe('Portal.pushProductDocs', () => {
     fs.removeSync(tmp);
   });
 
+  it('routes graphql products with portalType', async () => {
+    const fs = require('fs-extra');
+    const yaml = require('js-yaml');
+    const tmp = fs.mkdtempSync(
+      require('path').join(require('os').tmpdir(), 'apidex-docs-gql-'),
+    );
+    fs.writeFileSync(path.join(tmp, 'hi.md'), '# Hi\n');
+    fs.writeFileSync(
+      path.join(tmp, 'apis.yaml'),
+      yaml.dump({
+        products: [
+          {
+            name: 'gql-product',
+            portalType: 'graphql',
+            spec: path.join(fixtures, 'echo-graphql.json'),
+            docs: [{markdown: 'hi.md', slug: 'hi'}],
+          },
+        ],
+      }),
+    );
+    const portal = new Portal(
+      {hostname: 'https://h', environment: 'e', token: 't'},
+      path.join(tmp, 'apis.yaml'),
+    );
+    portal.request.post = jest.fn().mockResolvedValue({data: {}});
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    await portal.pushProductDocs();
+
+    expect(portal.request.post).toHaveBeenCalledWith('api/cms/product-docs', {
+      productId: 'gql-product',
+      portalType: 'graphql',
+      force: false,
+      docs: [{slug: 'hi', title: 'Hi', markdown: '# Hi\n'}],
+    });
+    log.mockRestore();
+    fs.removeSync(tmp);
+  });
+
   it('warns once when Payload is not the CMS', async () => {
     const tmp = require('fs-extra').mkdtempSync(
       require('path').join(require('os').tmpdir(), 'apidex-docs-skip-'),

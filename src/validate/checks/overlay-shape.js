@@ -1,11 +1,12 @@
 const {validateOverlayDocument} = require('../../lib/overlays');
+const {skipNonOpenapiOverlays} = require('../skip-mcp-overlays');
 
 module.exports = {
   id: 'overlay-shape',
   async run(ctx) {
     const messages = [];
     for (const entry of ctx.entries) {
-      if (entry.portalType === 'mcp') continue;
+      if (skipNonOpenapiOverlays(entry)) continue;
       for (const overlay of entry.overlays) {
         if (overlay.error || !overlay.overlay) continue;
         try {

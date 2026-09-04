@@ -7,10 +7,8 @@ describe('spec adapter registry', () => {
     expect(getAdapter('mcp').id).toBe('mcp');
   });
 
-  it('rejects graphql as not supported yet', () => {
-    expect(() => getAdapter('graphql')).toThrow(
-      'portalType "graphql" is not supported yet',
-    );
+  it('returns graphql for graphql', () => {
+    expect(getAdapter('graphql').id).toBe('graphql');
   });
 
   it('rejects unknown portal types', () => {

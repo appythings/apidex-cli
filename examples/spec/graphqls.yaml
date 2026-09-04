@@ -1,0 +1,13 @@
+# GraphQL-only copy-paste kit. `name` is the gateway product id, not displayName.
+# `spec:` points at a v1 upload envelope (document + optional execution).
+# Product-only: no category spec, no inheritSpec, no overlays.
+#
+#   node ../../src/index.js validate graphqls.yaml
+#   node ../../src/index.js upload-spec graphqls.yaml --host ... --environment ... --token ...
+products:
+  - name: pep-graphql
+    spec: specs/countries-envelope.json
+    portalType: graphql
+    permissionGroup: owners
+    docs:
+      - type: overview

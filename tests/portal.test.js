@@ -618,6 +618,90 @@ describe('Portal', () => {
       );
     });
 
+    it('uploads a GraphQL envelope and sets apiStyle first', async () => {
+      const mf = path.join(fixtures, 'manifest-graphql-product.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({data: []});
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+
+      await portal.pushSwagger();
+
+      expect(portal.request.post.mock.calls[0][0]).toBe(
+        'api/environments/e1/apiproducts/pep-graphql/apistyle',
+      );
+      expect(portal.request.post.mock.calls[0][1]).toEqual({
+        apiStyle: 'graphql',
+      });
+      expect(portal.request.post).toHaveBeenCalledWith(
+        'api/environments/e1/apiproducts/pep-graphql/specs',
+        expect.objectContaining({
+          inheritSpec: false,
+          latest: true,
+          overlays: [],
+          spec: expect.objectContaining({
+            document: expect.objectContaining({kind: 'graphql'}),
+          }),
+        }),
+      );
+    });
+
+    it('skips apistyle when the product is already graphql', async () => {
+      const mf = path.join(fixtures, 'manifest-graphql-product.yaml');
+      const portal = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        mf,
+      );
+      jest.spyOn(portal.request, 'get').mockResolvedValue({
+        data: [{name: 'pep-graphql', id: 'pep-graphql', apiStyle: 'graphql'}],
+      });
+      jest.spyOn(portal.request, 'post').mockResolvedValue({});
+
+      await portal.pushSwagger();
+
+      expect(
+        portal.request.post.mock.calls.some(([url]) =>
+          String(url).includes('/apistyle'),
+        ),
+      ).toBe(false);
+    });
+
+    it('refuses GraphQL overlays and category inherit', async () => {
+      const overlays = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        path.join(fixtures, 'manifest-graphql-overlays.yaml'),
+      );
+      await expect(overlays.pushSwagger()).rejects.toThrow(
+        /overlays are not supported for portalType graphql/,
+      );
+
+      const category = new Portal(
+        {
+          hostname: 'https://portal.test',
+          environment: 'e1',
+          token: 't',
+        },
+        path.join(fixtures, 'manifest-graphql-category.yaml'),
+      );
+      await expect(category.pushCategories()).rejects.toThrow(
+        /portalType graphql is product-only/,
+      );
+    });
+
     it('skips apistyle when the product is already mcp', async () => {
       const mf = path.join(fixtures, 'manifest-mcp-product.yaml');
       const portal = new Portal(

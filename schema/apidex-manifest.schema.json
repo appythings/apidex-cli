@@ -103,7 +103,7 @@
         "inheritSpec": {"type": "boolean"},
         "portalType": {
           "type": "string",
-          "enum": ["api", "mcp"],
+          "enum": ["api", "mcp", "graphql"],
           "default": "api"
         },
         "permissionGroup": {"type": "string"},

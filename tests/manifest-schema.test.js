@@ -12,10 +12,10 @@ describe('manifest schema', () => {
     });
   });
 
-  it('documents api and mcp portal types with api as the default', () => {
+  it('documents api, mcp, and graphql portal types with api as the default', () => {
     expect(schema.$defs.product.properties.portalType).toEqual({
       type: 'string',
-      enum: ['api', 'mcp'],
+      enum: ['api', 'mcp', 'graphql'],
       default: 'api',
     });
   });

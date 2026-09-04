@@ -1,12 +1,13 @@
 const openapi = require('./openapi');
 const mcp = require('./mcp');
+const graphql = require('./graphql');
 
 function getAdapter(kind) {
   if (kind === 'mcp') {
     return mcp;
   }
   if (kind === 'graphql') {
-    throw new Error('portalType "graphql" is not supported yet');
+    return graphql;
   }
   if (kind === 'api' || kind === undefined || kind === null || kind === '') {
     return openapi;
@@ -18,4 +19,5 @@ module.exports = {
   getAdapter,
   openapi,
   mcp,
+  graphql,
 };

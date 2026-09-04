@@ -8,6 +8,7 @@ const {
 } = require('../../lib/spec-ref');
 const {getAdapter} = require('../../specs');
 const {isMcpToolsSpecDocument} = require('../../specs/mcp');
+const {isGraphqlSpecUpload} = require('../../specs/graphql');
 
 function overlaysDeclared(entry) {
   return Array.isArray(entry && entry.overlays) && entry.overlays.length > 0;
@@ -20,10 +21,7 @@ function findLoaded(ctx, kind, name) {
 }
 
 async function validateLoaded(owner, kind, specFilePath, loaded) {
-  if (kind === 'graphql') {
-    return [`${owner}: portalType "graphql" is not supported yet`];
-  }
-  if (kind !== 'api' && kind !== 'mcp') {
+  if (kind !== 'api' && kind !== 'mcp' && kind !== 'graphql') {
     return [];
   }
   if (loaded && loaded.specError) {
@@ -33,9 +31,19 @@ async function validateLoaded(owner, kind, specFilePath, loaded) {
   if (!document || !specFilePath) {
     return [];
   }
+  if (kind !== 'graphql' && isGraphqlSpecUpload(document)) {
+    return [
+      `${owner}: spec looks like a GraphQL upload envelope (portalType is ${kind})`,
+    ];
+  }
   if (kind === 'mcp' && !isMcpToolsSpecDocument(document)) {
     return [
       `${owner}: spec is not an MCP tools catalogue (portalType is mcp)`,
+    ];
+  }
+  if (kind === 'graphql' && !isGraphqlSpecUpload(document)) {
+    return [
+      `${owner}: spec is not a GraphQL v1 upload envelope (portalType is graphql)`,
     ];
   }
   if (kind === 'api' && isMcpToolsSpecDocument(document)) {
@@ -79,9 +87,17 @@ module.exports = {
           );
         }
         const categoryKind = inheritTypes[0] || portalType(category);
-        if (overlaysDeclared(category) && categoryKind === 'mcp') {
+        if (categoryKind === 'graphql' || portalType(category) === 'graphql') {
           messages.push(
-            `${category.name}: overlays are not supported for portalType mcp`,
+            `${category.name}: portalType graphql is product-only (no category spec or inheritSpec)`,
+          );
+        }
+        if (
+          overlaysDeclared(category) &&
+          (categoryKind === 'mcp' || categoryKind === 'graphql')
+        ) {
+          messages.push(
+            `${category.name}: overlays are not supported for portalType ${categoryKind}`,
           );
         }
         if (inheritors.length > 0 && !ref.value && !ref.error) {
@@ -113,9 +129,21 @@ module.exports = {
         messages.push(ref.error);
       }
       const kind = portalType(product);
-      if (overlaysDeclared(product) && kind === 'mcp') {
+      if (
+        overlaysDeclared(product) &&
+        (kind === 'mcp' || kind === 'graphql')
+      ) {
         messages.push(
-          `${owner}: overlays are not supported for portalType mcp`,
+          `${owner}: overlays are not supported for portalType ${kind}`,
+        );
+      }
+      if (
+        kind === 'graphql' &&
+        Boolean(category) &&
+        inheritsCategorySpec(product)
+      ) {
+        messages.push(
+          `${owner}: inheritSpec is not supported for portalType graphql`,
         );
       }
     });

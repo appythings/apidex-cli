@@ -1,7 +1,7 @@
 # apidex-cli
 Commandline tool to use the management APIs of Apidex
 
-Supports **OpenAPI 3.0.x and 3.1.x** (including JSON Schema 2020-12 features) and **MCP tools-catalogue** specs (`portalType: mcp`). Specs are validated locally by `validate` and `upload-spec`. OpenAPI is checked again by the Apidex backend. Requires **Node.js >= 18**.
+Supports **OpenAPI 3.0.x and 3.1.x** (including JSON Schema 2020-12 features), **MCP tools-catalogue** specs (`portalType: mcp`), and **GraphQL v1 envelopes** (`portalType: graphql`). Specs are validated locally by `validate` and `upload-spec`. OpenAPI and GraphQL are checked again by the Apidex backend. Requires **Node.js >= 18**.
 
 ## Installation
 ```npm i -g @appythings/apidex-cli```
@@ -11,8 +11,8 @@ To upload your API's to apidex, create a yaml file with the following content:
 ```
 products:
   - name: ID-of-the-API # For SAP and Apigee this is the name of the product, not the displayName
-    openapi: swagger.json # OpenAPI file (yaml or json). Use spec: for MCP.
-    portalType: api # api (default) or mcp
+    openapi: swagger.json # OpenAPI file (yaml or json). Use spec: for MCP or GraphQL.
+    portalType: api # api (default), mcp, or graphql
     permissionGroup: owners # Permission group that is allowed access to this product (optional)
     overlays: # optional: per-locale OpenAPI Overlay 1.x documents, see "Per-locale OpenAPI overlays"
       - locale: nl-NL
@@ -40,6 +40,12 @@ categories: # You can also bundle multiple products in a category
         openapi: swagger.json # Or the product will have it's own spec
         permissionGroup: owners # Permission group that is allowed access to this product (optional)
         backendTeam: backend-squad # optional: assign this API product to a backend team (by team name)
+products:
+  - name: ID-of-the-GraphQL # Gateway product id/name. GraphQL is product-only.
+    spec: graphql-envelope.json # v1 envelope (document + optional execution). Do not also set openapi.
+    portalType: graphql
+    docs:
+      - type: overview
   - name: ID-of-the-MCP # Gateway product id/name
     spec: mcp-tools.json # tools-catalogue JSON (or yaml). Do not also set openapi.
     portalType: mcp # required so validate/upload use the MCP adapter
@@ -60,7 +66,7 @@ Run:
 ```
 apidex-cli upload-spec [options] <manifest>
 
-uploads an OpenAPI or MCP spec to apidex (OpenAPI 3.0.x / 3.1.x, or an MCP tools catalogue)
+uploads an OpenAPI, MCP, or GraphQL spec to apidex
 
 Options:
   --environment <environment>    add the environment to deploy this to
@@ -80,7 +86,7 @@ Options:
 ```
 apidex-cli validate [manifest] [--require-locales <list>] [--json] [--check-portal]
 
-validate OpenAPI and MCP spec documents, overlay files, YAML/markdown paths, and relative links in docs (offline)
+validate OpenAPI, MCP, and GraphQL spec documents, overlay files, YAML/markdown paths, and relative links in docs (offline)
 
 Options:
   --require-locales <list>  comma-separated locales every non-inherited spec must declare overlays for
@@ -162,6 +168,14 @@ Coverage thresholds are enforced in `jest.config.js`: 90% global minimum, with h
 - Set `portalType: mcp`. The CLI validates a tools-catalogue document (`tools[]`, unique tool names, optional `resources` / `prompts`) and POSTs `apiStyle: mcp` before the spec.
 - Overlays are OpenAPI-only. Declaring `overlays` on an MCP product or category fails `validate` / `upload-spec`.
 - Category + `inheritSpec` works the same as OpenAPI. See [`examples/spec/mcps.yaml`](./examples/spec/mcps.yaml) for a copy-paste kit.
+
+### GraphQL envelopes
+
+- Point at the file with `spec:`. Do not also set `openapi`.
+- Set `portalType: graphql`. The file must be a v1 upload envelope (`document.kind: graphql`, `schemaVersion: 1`, semver `info.version`, SDL `schema`).
+- GraphQL is product-only: no category spec and no `inheritSpec`.
+- Overlays are OpenAPI-only.
+- The CLI POSTs `apiStyle: graphql` before the spec. See [`examples/spec/graphqls.yaml`](./examples/spec/graphqls.yaml).
 
 ### Per-locale OpenAPI overlays
 

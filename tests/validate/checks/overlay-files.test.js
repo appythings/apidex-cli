@@ -28,6 +28,19 @@ describe('overlay-files check', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('skips overlay file checks for graphql products', async () => {
+    const result = await overlayFiles.run({
+      entries: [
+        {
+          name: 'gql-product',
+          portalType: 'graphql',
+          overlays: [{error: 'would fail if checked'}],
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('fails when an overlay entry has no path', async () => {
     const ctx = loadContext({
       manifestPath: path.join(fixtures, 'manifest-missing-path.yaml'),

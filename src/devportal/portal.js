@@ -11,6 +11,10 @@ const {walkProducts, loadProductDocsForUpload} = require('../lib/product-docs');
 const {specField, portalType, hasSpecRef, inheritsCategorySpec} = require('../lib/spec-ref');
 const {getAdapter} = require('../specs');
 
+function isNonOpenapiKind(kind) {
+  return kind === 'mcp' || kind === 'graphql';
+}
+
 class Portal {
   /** @param {Record<string, unknown>} yml */
   static collectBackendTeamAssignments(yml) {
@@ -184,18 +188,18 @@ class Portal {
 
   rejectMcpOverlays(entry, kind) {
     if (
-      kind === 'mcp' &&
+      isNonOpenapiKind(kind) &&
       Array.isArray(entry.overlays) &&
       entry.overlays.length > 0
     ) {
       throw new Error(
-        `${entry.name}: overlays are not supported for portalType mcp`,
+        `${entry.name}: overlays are not supported for portalType ${kind}`,
       );
     }
   }
 
   async ensureApiStyle(productName, kind) {
-    if (kind !== 'mcp') {
+    if (!isNonOpenapiKind(kind)) {
       return;
     }
     let products = [];
@@ -209,14 +213,14 @@ class Portal {
         product &&
         (product.name === productName || product.id === productName),
     );
-    if (match && match.apiStyle === 'mcp') {
+    if (match && match.apiStyle === kind) {
       return;
     }
     await this.request.post(
       `api/environments/${encodeURIComponent(
         this.config.environment,
       )}/apiproducts/${encodeURIComponent(productName)}/apistyle`,
-      {apiStyle: 'mcp'},
+      {apiStyle: kind},
     );
   }
 
@@ -359,8 +363,9 @@ class Portal {
         const {parsed, kind, file} = await this.loadAndValidateSpec(product);
         console.log(`Uploading ${file} for product: ${product.name}`);
         this.rejectMcpOverlays(product, kind);
-        const overlays =
-          kind === 'mcp' ? [] : loadOverlays(product, this.manifestDir);
+        const overlays = isNonOpenapiKind(kind)
+          ? []
+          : loadOverlays(product, this.manifestDir);
         if (overlays.length > 0) {
           console.log(
             `Including ${overlays.length} overlay(s) for ${product.name}: ${overlays
@@ -372,7 +377,7 @@ class Portal {
           await this.login();
         }
         await this.ensureApiStyle(product.name, kind);
-        if (kind !== 'mcp') {
+        if (!isNonOpenapiKind(kind)) {
           await this.assertOverlaysNotDropped(product.name, overlays);
         }
         return this.request
@@ -404,15 +409,21 @@ class Portal {
       this.categories.map(async category => {
         console.log(`Uploading ${category.name}`);
         const categoryKind = this.categoryPortalType(category);
+        if (categoryKind === 'graphql' || portalType(category) === 'graphql') {
+          throw new Error(
+            `${category.name}: portalType graphql is product-only (no category spec or inheritSpec)`,
+          );
+        }
         const {parsed: parsedSwagger, kind} = await this.loadAndValidateSpec({
           ...category,
           portalType: categoryKind,
         });
         this.rejectMcpOverlays(category, kind);
-        const categoryOverlays =
-          kind === 'mcp' ? [] : loadOverlays(category, this.manifestDir);
+        const categoryOverlays = isNonOpenapiKind(kind)
+          ? []
+          : loadOverlays(category, this.manifestDir);
         await this.login();
-        if (kind !== 'mcp') {
+        if (!isNonOpenapiKind(kind)) {
           await this.assertOverlaysNotDropped(
             category.name,
             categoryOverlays,
@@ -467,6 +478,11 @@ class Portal {
             let parsedSwagger;
             let overlays = [];
             const productKind = portalType(product);
+            if (productKind === 'graphql' && product.inheritSpec !== false) {
+              throw new Error(
+                `${product.name}: inheritSpec is not supported for portalType graphql`,
+              );
+            }
             if (product.inheritSpec === false) {
               if (!hasSpecRef(product)) {
                 console.log('You have to specify spec');
@@ -475,14 +491,13 @@ class Portal {
               const loaded = await this.loadAndValidateSpec(product);
               parsedSwagger = loaded.parsed;
               this.rejectMcpOverlays(product, loaded.kind);
-              overlays =
-                loaded.kind === 'mcp'
-                  ? []
-                  : loadOverlays(product, this.manifestDir);
+              overlays = isNonOpenapiKind(loaded.kind)
+                ? []
+                : loadOverlays(product, this.manifestDir);
               if (!this.config.token) {
                 await this.login();
               }
-              if (loaded.kind !== 'mcp') {
+              if (!isNonOpenapiKind(loaded.kind)) {
                 await this.assertOverlaysNotDropped(product.name, overlays);
               }
             } else if (
@@ -874,7 +889,9 @@ class Portal {
           `api/cms/product-docs${forceQuery}`,
           {
             productId: product.name,
-            ...(product.portalType === 'mcp' ? {portalType: 'mcp'} : {}),
+            ...(product.portalType === 'mcp' || product.portalType === 'graphql'
+              ? {portalType: product.portalType}
+              : {}),
             force: Boolean(this.config.forceDocs),
             docs,
           },
