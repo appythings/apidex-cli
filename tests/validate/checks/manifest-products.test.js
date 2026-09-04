@@ -3,7 +3,7 @@ const check = require('../../../src/validate/checks/manifest-products');
 describe('manifest-products check', () => {
   it('passes when every manifest product exists by name or id', async () => {
     const result = await check.run({
-      options: {environment: '123456'},
+      options: {environment: '123456', checkPortal: true},
       gatewayProducts: [
         {id: 'pep-echo', name: 'pep-echo'},
         {id: 'fef4f071-be87-39e8-bf0c-210aaef98326', name: 'some-plan'},
@@ -23,7 +23,7 @@ describe('manifest-products check', () => {
 
   it('fails when a product is missing and ignores displayName-only matches', async () => {
     const result = await check.run({
-      options: {environment: '123456'},
+      options: {environment: '123456', checkPortal: true},
       gatewayProducts: [{id: 'pep-echo', name: 'pep-echo', displayName: 'Echo v1'}],
       entries: [{kind: 'product', name: 'Echo V1'}],
     });
@@ -46,6 +46,7 @@ describe('manifest-products check', () => {
 
   it('ignores null gateway product rows', async () => {
     const result = await check.run({
+      options: {environment: '123456', checkPortal: true},
       gatewayProducts: [null],
       entries: [{kind: 'product', name: 'pep-echo'}],
     });
@@ -54,6 +55,7 @@ describe('manifest-products check', () => {
 
   it('fails with the gateway load error instead of listing missing products', async () => {
     const result = await check.run({
+      options: {checkPortal: true},
       gatewayProductsError: 'portal down',
       gatewayProducts: [],
       entries: [{kind: 'product', name: 'pep-echo'}],

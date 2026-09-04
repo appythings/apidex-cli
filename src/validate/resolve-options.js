@@ -1,9 +1,8 @@
 /**
  * Resolves validate options from CLI argv.
- * A spec-repo settings file will supply defaults later; flags always win.
+ * Offline by default. --check-portal requires host/environment/token.
  *
- * @param {{manifestPath?: string, requireLocales?: string, host?: string, environment?: string, token?: string, clientId?: string, clientSecret?: string, aud?: string, scope?: string, tokenUrl?: string}} argv
- * @returns {{manifestPath: string, requireLocales: string[], host: string, environment: string, token: string, clientId: string, clientSecret: string, aud: string, scope: string, tokenUrl: string}}
+ * @param {{manifestPath?: string, requireLocales?: string, host?: string, environment?: string, token?: string, clientId?: string, clientSecret?: string, aud?: string, scope?: string, tokenUrl?: string, checkPortal?: boolean, json?: boolean}} argv
  */
 function trimFlag(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -35,16 +34,20 @@ function resolveValidateOptions(argv = {}) {
   const aud = trimFlag(argv.aud);
   const scope = trimFlag(argv.scope);
   const tokenUrl = trimFlag(argv.tokenUrl);
+  const checkPortal = Boolean(argv.checkPortal);
+  const json = Boolean(argv.json);
 
-  if (!host || !environment) {
-    throw new Error(
-      'validate requires --host and --environment (or APIDEX_HOST / APIDEX_ENVIRONMENT)',
-    );
-  }
-  if (!token && !(clientId && tokenUrl)) {
-    throw new Error(
-      'validate requires --token or client credentials (--clientId and --tokenUrl; also --clientSecret unless using a client certificate)',
-    );
+  if (checkPortal) {
+    if (!host || !environment) {
+      throw new Error(
+        'validate --check-portal requires --host and --environment (or APIDEX_HOST / APIDEX_ENVIRONMENT)',
+      );
+    }
+    if (!token && !(clientId && tokenUrl)) {
+      throw new Error(
+        'validate --check-portal requires --token or client credentials (--clientId and --tokenUrl; also --clientSecret unless using a client certificate)',
+      );
+    }
   }
 
   return {
@@ -58,6 +61,8 @@ function resolveValidateOptions(argv = {}) {
     aud,
     scope,
     tokenUrl,
+    checkPortal,
+    json,
   };
 }
 

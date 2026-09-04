@@ -4,6 +4,7 @@ const portal = {
   host: 'http://127.0.0.1:3000',
   environment: '123456',
   token: 'tok',
+  checkPortal: true,
 };
 
 const emptyClient = {
@@ -12,6 +13,11 @@ const emptyClient = {
   aud: '',
   scope: '',
   tokenUrl: '',
+};
+
+const extra = {
+  checkPortal: true,
+  json: false,
 };
 
 describe('resolveValidateOptions', () => {
@@ -29,6 +35,7 @@ describe('resolveValidateOptions', () => {
       environment: '123456',
       token: 'tok',
       ...emptyClient,
+      ...extra,
     });
   });
 
@@ -46,6 +53,7 @@ describe('resolveValidateOptions', () => {
       environment: '123456',
       token: 'tok',
       ...emptyClient,
+      ...extra,
     });
   });
 
@@ -59,6 +67,7 @@ describe('resolveValidateOptions', () => {
       environment: '123456',
       token: 'tok',
       ...emptyClient,
+      ...extra,
     });
   });
 
@@ -69,20 +78,32 @@ describe('resolveValidateOptions', () => {
     );
   });
 
-  it('requires host and environment', () => {
-    expect(() =>
-      resolveValidateOptions({manifestPath: 'apis.yaml', token: 'tok'}),
-    ).toThrow(/validate requires --host and --environment/);
+  it('does not require host offline', () => {
+    expect(resolveValidateOptions({manifestPath: 'apis.yaml'})).toMatchObject({
+      manifestPath: 'apis.yaml',
+      checkPortal: false,
+    });
   });
 
-  it('requires token or client credentials', () => {
+  it('requires host and environment for --check-portal', () => {
+    expect(() =>
+      resolveValidateOptions({
+        manifestPath: 'apis.yaml',
+        token: 'tok',
+        checkPortal: true,
+      }),
+    ).toThrow(/validate --check-portal requires --host and --environment/);
+  });
+
+  it('requires token or client credentials for --check-portal', () => {
     expect(() =>
       resolveValidateOptions({
         manifestPath: 'apis.yaml',
         host: 'http://127.0.0.1:3000',
         environment: '123456',
+        checkPortal: true,
       }),
-    ).toThrow(/validate requires --token or client credentials/);
+    ).toThrow(/validate --check-portal requires --token or client credentials/);
   });
 
   it('accepts client credentials instead of a token', () => {
@@ -96,6 +117,7 @@ describe('resolveValidateOptions', () => {
         aud: ' aud ',
         scope: ' scope ',
         tokenUrl: ' https://token.test/oauth ',
+        checkPortal: true,
       }),
     ).toEqual({
       manifestPath: 'apis.yaml',
@@ -108,29 +130,33 @@ describe('resolveValidateOptions', () => {
       aud: 'aud',
       scope: 'scope',
       tokenUrl: 'https://token.test/oauth',
+      checkPortal: true,
+      json: false,
     });
   });
 
-  it('rejects clientId without tokenUrl when no token is set', () => {
+  it('rejects clientId without tokenUrl when --check-portal and no token', () => {
     expect(() =>
       resolveValidateOptions({
         manifestPath: 'apis.yaml',
         host: 'http://127.0.0.1:3000',
         environment: '123456',
         clientId: 'cid',
+        checkPortal: true,
       }),
-    ).toThrow(/validate requires --token or client credentials/);
+    ).toThrow(/validate --check-portal requires --token or client credentials/);
   });
 
-  it('rejects tokenUrl without clientId when no token is set', () => {
+  it('rejects tokenUrl without clientId when --check-portal and no token', () => {
     expect(() =>
       resolveValidateOptions({
         manifestPath: 'apis.yaml',
         host: 'http://127.0.0.1:3000',
         environment: '123456',
         tokenUrl: 'https://token.test/oauth',
+        checkPortal: true,
       }),
-    ).toThrow(/validate requires --token or client credentials/);
+    ).toThrow(/validate --check-portal requires --token or client credentials/);
   });
 
   it('trims portal connection fields', () => {
@@ -140,6 +166,7 @@ describe('resolveValidateOptions', () => {
         host: ' http://127.0.0.1:3000 ',
         environment: ' 123456 ',
         token: ' tok ',
+        checkPortal: true,
       }),
     ).toEqual({
       manifestPath: 'apis.yaml',
@@ -148,6 +175,7 @@ describe('resolveValidateOptions', () => {
       environment: '123456',
       token: 'tok',
       ...emptyClient,
+      ...extra,
     });
   });
 });

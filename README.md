@@ -26,6 +26,14 @@ categories: # You can also bundle multiple products in a category
       - name: ID-of-the-API
         inheritSpec: true # You can choose to let the product inherit the spec from the category
         permissionGroup: owners # Permission group that is allowed access to this product (optional)
+        docs: # optional: Payload product tabs (markdown files relative to this YAML)
+          - markdown: docs/getting-started.md
+            title: Getting started
+            slug: getting-started
+            locales: # optional translations of the same tab; en-GB stays above
+              - locale: nl-NL
+                markdown: docs/getting-started.nl-NL.md
+                title: Aan de slag # optional: defaults to first markdown H1
       - name: ID-of-the-API
         inheritSpec: false
         openapi: swagger.json # Or the product will have it's own spec
@@ -57,17 +65,21 @@ Options:
   --scope <scope>                add the scope for the developer portal app registration
   --tokenUrl <tokenUrl>          add the tokenUrl from your OpenID Connect provider (ex: https://login.microsoftonline.com/yourcompany.onmicrosoft.com/oauth2/v2.0/token)
   --force                        Force the database to overwrite spec regardless of version number (default: false)
+  --skip-docs                    Skip pushing product docs tabs to Payload
+  --force-docs                   Overwrite Payload docs tabs after CMS admin edits
   --token <token>                provide a token instead
   -h, --help                     display help for command
 ```
 
 ```
-apidex-cli validate [manifest] [--require-locales <list>]
+apidex-cli validate [manifest] [--require-locales <list>] [--json] [--check-portal]
 
-validate OpenAPI overlay files and that manifest API products exist in the portal
+validate overlay files, YAML/markdown paths, and relative links in docs (offline)
 
 Options:
   --require-locales <list>  comma-separated locales every non-inherited spec must declare overlays for
+  --json                    print check results as JSON
+  --check-portal            also match manifest product names against the portal (needs host/env/token)
   --host <host>             portal hostname (or APIDEX_HOST)
   --environment <id>        portal environment id (or APIDEX_ENVIRONMENT)
   --token <token>           portal token (or APIDEX_TOKEN)
@@ -79,7 +91,21 @@ Options:
   -h, --help                display help for command
 ```
 
-Same binary as `upload-spec`. Spec-repo CI needs portal credentials: `validate` always lists `GET /api/environments/{id}/apiproducts` and matches manifest product `name` to gateway product **name or id**, not displayName. Auth is `--token` or the same client credentials as `upload-spec`. Overlay checks still run if that call fails. A settings file that supplies a default manifest path and required locales is coming later; until then pass the manifest path (and `--require-locales` when you want that gate). Runnable samples: [`examples/`](./examples/).
+Same binary as `upload-spec`. `validate` is a laptop linter by default (no token). Overlay, OpenAPI, `docs[].markdown`, and `docs[].locales[].markdown` paths are relative to the manifest file. Localized docs use the same locale tags as overlays; the top-level markdown is `en-GB`, and each `locales[]` entry translates the same tab and slug. `--check-portal` lists `GET /api/environments/{id}/apiproducts` and matches manifest product `name` to gateway product **name or id**, not displayName. Runnable samples: [`examples/`](./examples/). Agent notes: [`AGENTS.md`](./AGENTS.md). Schema: [`schema/apidex-manifest.schema.json`](./schema/apidex-manifest.schema.json).
+
+```
+apidex-cli manifest add-doc <product> <markdown> --manifest <apis.yaml> [--title] [--slug] [--locale] [--update]
+
+add a product docs tab to the manifest (flags only, no wizard)
+```
+
+Add the default `en-GB` tab first. To attach or update a translation, select
+that tab with `--slug`:
+
+```
+apidex-cli manifest add-doc pep-echo docs/getting-started.nl-NL.md \
+  --manifest apis.yaml --slug getting-started --locale nl-NL
+```
 
 ```
 apidex-cli upload-markdown [options] <directory>
@@ -151,15 +177,10 @@ products:
   different casing (`NL-nl`) resolves to the canonical tag. An unsupported
   locale fails the upload rather than being silently dropped.
 - `path` points at a `.yaml`, `.yml`, or `.json` overlay document, resolved
-  relative to where you run the CLI.
+  relative to the manifest file.
 - One entry per locale — a duplicate locale fails the upload.
 
-Run `apidex-cli validate apis.yaml` with `--host`, `--environment`, and either
-`--token` or client credentials (`--clientId`, `--tokenUrl`, `--clientSecret`)
-before `upload-spec` so unmatched JSONPath targets, missing overlay files, and
-unknown API products fail in CI instead of at upload time. CI that requires a
-full set of translations should also pass `--require-locales nl-NL,de-DE` (or
-the locales you ship); the flag stays opt-in.
+Run `apidex-cli validate apis.yaml` before `upload-spec`. Add `--check-portal` with `--host`, `--environment`, and either `--token` or client credentials when CI should also fail on unknown API products. CI that requires a full set of translations should also pass `--require-locales nl-NL,de-DE` (or the locales you ship); the flag stays opt-in.
 
 #### Writing an overlay
 
