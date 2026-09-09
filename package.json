@@ -6,6 +6,12 @@
   "version": "3.1.0",
   "description": "Commandline tool to use the management APIs of Apidex",
   "main": "src/index.js",
+  "files": [
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=22"
   },
@@ -40,8 +46,11 @@
     "type": "git",
     "url": "git+https://github.com/appythings/apidex-cli.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "name": "AppyThings",
+    "url": "https://www.appythings.com"
+  },
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/appythings/apidex-cli/issues"
   },
