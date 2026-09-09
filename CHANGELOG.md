@@ -12,6 +12,7 @@ Major versions of apidex-cli track the API-dex release they target: 1.x targeted
 - Failed category overlay PUT deletes the new category spec (same as the UI). That can cascade `inheritSpec` product specs for the same category; re-run `upload-spec` to restore inherit links.
 
 ### Fixed
+- Startup crash on Node 25+ (`TypeError: Cannot read properties of undefined (reading 'prototype')` from the `jsonwebtoken` dependency chain). Client-assertion JWTs are now signed with Node's built-in `crypto`; `jsonwebtoken`, `jsrsasign` and `uuid` are no longer dependencies. The `x5t` header is now base64url-encoded as RFC 7515 requires (previously standard base64).
 - Category overlay drop-check looks up the category spec only. It no longer falls through to an API product of the same name.
 
 ### Changed
