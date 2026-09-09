@@ -103,20 +103,6 @@ Options:
 - **`backendTeam` on a product** (top-level `products` or under `categories[].products`): optional. When set to a string, the CLI resolves the backend team by name and calls `POST /api/environments/{environment}/apiproducts/{productId}/assign-backend-team`. When set to `null` or YAML `~`, the CLI **unassigns** any backend team for that product. **Omit the key** entirely if you do not want the CLI to change existing assignments for that product.
 - **Authorization**: the Apidex API currently allows **admin** callers (not plain `cicd` service accounts without admin) on the assign-backend-team endpoint. Ensure your `--token` or client-credentials user has admin rights before relying on assignments in CI.
 
-### Automated tests
-
-```bash
-npm test
-```
-
-Coverage thresholds are enforced in `jest.config.js`: 90% global minimum, with higher bars for `formatAxiosError.js` and `portal.js`.
-
-### Manual integration verification
-
-1. Use a throwaway manifest with `backendTeams` and a `backendTeam` on one product; run `apidex-cli upload-spec …`.
-2. Confirm with the Apidex API (`GET /api/teams`, or your tenant’s admin tools) that the team exists as `teamType: backend` and the product assignment matches.
-3. **Cleanup**: call assign with `{ "backendTeamId": null }` (or manifest `backendTeam: ~`), then `DELETE /api/teams/{id}` for the scratch team.
-
 ### OpenAPI version notes
 
 - Supported: **OpenAPI 3.0.x**, **3.1.x**, and **3.2.x** (validated with `@scalar/openapi-parser`, matching the backend).
@@ -242,13 +228,6 @@ An earlier iteration embedded copy in the spec itself, as vendor extensions such
 as `x-description-nl-NL`. The portal no longer reads them. Put new locale views
 in overlay files as described above.
 
-### Publishing (maintainers)
+## Contributing
 
-After merging to the release branch, from the repo root:
-
-```bash
-npm test
-npm publish --access public
-```
-
-Run a staging `upload-spec` against a non-prod backend with a 3.1 fixture before publishing (see plan mitigations).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, tests, manual verification and the release process.
