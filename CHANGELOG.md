@@ -1,5 +1,7 @@
 # Changelog
 
+Major versions of apidex-cli track the API-dex release they target: 1.x targeted API-dex 1 and 2 (including SAP API Management), 3.x targets API-dex 3 (Apigee, Gravitee, Azure API Management). There was no 2.x release of the CLI.
+
 ## Unreleased
 
 ### Added
@@ -13,6 +15,9 @@
 - Category overlay drop-check looks up the category spec only. It no longer falls through to an API product of the same name.
 
 ### Changed
+- Licence declared as Apache-2.0 in package.json, matching the LICENSE file (previously mis-declared as ISC).
+- npm package now ships only `src/`, README, CHANGELOG and LICENSE; releases publish from GitHub Actions with provenance.
+- CI tests on Node 22 and 24. Maintainer notes moved from the README to CONTRIBUTING.md.
 - Replaced `@apidevtools/swagger-parser` with `@scalar/openapi-parser`.
 - Requires **Node.js >= 22**.
 - Overlay wording is Overlay 1.x (including `remove` and non-copy `update`), not copy-only translations.
